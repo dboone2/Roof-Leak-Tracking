@@ -693,8 +693,53 @@
                 <h3>📋 Full Activity Log</h3>
                 <div id="historyLog"></div>
             </div>
+            <!-- ADD UPDATE FOOTER -->
+            <div class="modal-footer">
+                <div style="background:#e8f4fd;border-left:4px solid #00529b;border-radius:6px;
+                            padding:10px 14px;margin-bottom:14px;font-size:13px;
+                            color:#003366;font-weight:600;">
+                    📝 Add a new update below — the current status will be kept unchanged.
+                </div>
+                <label class="field-label" for="updateCommentInput">
+                    New Comment <span class="required-star">★ Required</span>
+                </label>
+                <textarea id="updateCommentInput"
+                          placeholder="Add new observations, actions taken, or updated condition notes..."></textarea>
+                <div class="error-msg" id="updateCommentError">
+                    ⚠️ Please enter a comment before saving.
+                </div>
+                <div class="photo-section" style="margin-top:12px;">
+                    <div class="photo-section-title">
+                        📷 Attach Photo <span class="photo-optional-tag">Optional</span>
+                    </div>
+                    <div class="photo-btn-row">
+                        <button class="btn-camera" onclick="triggerUpdatePhotoInput()">
+                            📷 Take Photo / Choose File
+                        </button>
+                        <button class="btn-remove-photo" id="removeUpdatePhotoBtn"
+                                onclick="removeUpdatePhoto()">✖ Remove</button>
+                    </div>
+                    <input type="file" id="updatePhotoInput" accept="image/*"
+       capture="environment" onchange="handleUpdatePhotoSelected(this)"
+       style="display:none;">
+
+                    <div id="updatePhotoPreviewWrap" style="display:none;margin-top:10px;">
+                        <div class="preview-label">Preview</div>
+                        <img id="updatePhotoPreview" src="" alt="Preview"
+                             style="max-width:100%;max-height:150px;border-radius:8px;
+                                    border:2px solid #00529b;display:block;">
+                    </div>
+                </div>
+                <div class="modal-btn-row">
+                    <button class="btn-cancel" onclick="closeHistoryModal()">✖ Close</button>
+                    <button class="btn-save" onclick="saveUpdateEntry()">
+                        💾 Save Update
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
+
 
    <!-- REPORT BUILDER MODAL -->
 <div class="modal-overlay" id="reportBuilderModal">
@@ -1210,14 +1255,102 @@
     // =================================================================
     // 8. HISTORY MODAL (Double Click)
     // =================================================================
+    // Track which bay is open in the history modal
+    let activeHistoryBayKey = null;
+    let pendingUpdatePhoto  = null;
+
     function openHistoryModal(bayKey) {
+        activeHistoryBayKey = bayKey;
         document.getElementById('historyModalTitle').innerText = `📍 Bay: ${bayKey} — Full History`;
         renderHistoryIntoElement('historyLog', bayKey);
+
+        // Reset the update form
+        document.getElementById('updateCommentInput').value = '';
+        document.getElementById('updateCommentInput').classList.remove('error');
+        document.getElementById('updateCommentError').classList.remove('visible');
+        removeUpdatePhoto();
+
         document.getElementById('historyModal').classList.add('active');
     }
+
     function closeHistoryModal() {
         document.getElementById('historyModal').classList.remove('active');
+        activeHistoryBayKey = null;
+        pendingUpdatePhoto  = null;
     }
+
+    // Photo handlers for the update form
+    function triggerUpdatePhotoInput() {
+        document.getElementById('updatePhotoInput').click();
+    }
+
+    function handleUpdatePhotoSelected(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_W  = 900;
+                const scale  = img.width > MAX_W ? MAX_W / img.width : 1;
+                canvas.width  = img.width  * scale;
+                canvas.height = img.height * scale;
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                pendingUpdatePhoto = canvas.toDataURL('image/jpeg', 0.72);
+                document.getElementById('updatePhotoPreview').src               = pendingUpdatePhoto;
+                document.getElementById('updatePhotoPreviewWrap').style.display = 'block';
+                document.getElementById('removeUpdatePhotoBtn').style.display   = 'inline-flex';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function removeUpdatePhoto() {
+        pendingUpdatePhoto = null;
+        document.getElementById('updatePhotoInput').value                   = '';
+        document.getElementById('updatePhotoPreview').src                   = '';
+        document.getElementById('updatePhotoPreviewWrap').style.display     = 'none';
+        document.getElementById('removeUpdatePhotoBtn').style.display       = 'none';
+    }
+
+    // Save the new update entry
+    function saveUpdateEntry() {
+        const text = document.getElementById('updateCommentInput').value.trim();
+        if (!text) {
+            document.getElementById('updateCommentInput').classList.add('error');
+            document.getElementById('updateCommentError').classList.add('visible');
+            document.getElementById('updateCommentInput').focus();
+            return;
+        }
+
+        // Get the current status of the bay
+        const dropdown    = document.querySelector(`select[data-key="${activeHistoryBayKey}"]`);
+        const currentStatus = dropdown ? dropdown.value : '';
+
+        // Save the new entry with the same status
+        addHistoryEntry(activeHistoryBayKey, currentStatus, text, pendingUpdatePhoto, false);
+        markCellHasComments(activeHistoryBayKey);
+
+        // Refresh the history log in the modal
+        renderHistoryIntoElement('historyLog', activeHistoryBayKey);
+
+        // Reset the form
+        document.getElementById('updateCommentInput').value = '';
+        document.getElementById('updateCommentInput').classList.remove('error');
+        document.getElementById('updateCommentError').classList.remove('visible');
+        removeUpdatePhoto();
+
+        // Show a quick confirmation
+        document.getElementById('updateCommentInput').placeholder =
+            '✅ Update saved! Add another note if needed...';
+        setTimeout(() => {
+            document.getElementById('updateCommentInput').placeholder =
+                'Add new observations, actions taken, or updated condition notes...';
+        }, 3000);
+    }
+
     document.getElementById('historyModal').addEventListener('click', function(e) {
         if (e.target === this) closeHistoryModal();
     });
