@@ -542,20 +542,24 @@
     overflow: hidden;
     padding: 0;
 }
+/* AFTER */
 .toggle-btn {
-    background: rgba(255,255,255,0.15);
+    background: #2d4a6e;
     color: white;
-    border: 2px solid rgba(255,255,255,0.35);
+    border: 2px solid #4a6a8e;
     border-radius: 8px;
-    padding: 4px 10px;
+    padding: 8px 6px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 700;
-    margin-left: auto;
+    align-self: center;
+    flex-shrink: 0;
+    height: 80px;
+    writing-mode: vertical-rl;
     transition: background 0.2s;
     line-height: 1;
 }
-.toggle-btn:hover { background: rgba(255,255,255,0.3); }
+.toggle-btn:hover { background: #3d5a7e; }
 
 
     </style>
@@ -757,21 +761,33 @@
                 </button>
             </div>
         </div>
-        <div class="modal-body" id="reportViewBody"></div>
+               <div class="modal-body" id="reportViewBody"></div>
     </div>
 </div>
 
+
  <!-- MAIN LAYOUT -->
-    <div class="main-layout">
-        <div class="panel grid-panel">
-            <div class="panel-header">🗺️ Roof Bay Grid &mdash; 50 ft &times; 50 ft Sections</div>
-            <div class="grid-scroll"><table id="mainGrid"></table></div>
-        </div>
-        <div class="panel summary-panel">
-            <div class="panel-header">
-    📊 Status Summary
-    <button class="toggle-btn" id="toggleSummaryBtn" onclick="toggleSummary()" title="Collapse/Expand">◀</button>
-</div>
+    <!-- AFTER — button now lives between the two panels -->
+<div class="main-layout">
+    <div class="panel grid-panel">
+        <div class="panel-header">🗺️ Roof Bay Grid &mdash; 50 ft &times; 50 ft Sections</div>
+
+        <div class="grid-scroll"><table id="mainGrid"></table></div>
+    </div>
+
+    <!-- ✅ Toggle button is now OUTSIDE both panels — always visible! -->
+    <button class="toggle-btn" id="toggleSummaryBtn" 
+            onclick="toggleSummary()" 
+            title="Collapse Summary"
+            style="align-self:center; flex-shrink:0; background:#2d4a6e; 
+                   color:white; border:2px solid #4a6a8e; border-radius:8px;
+                   padding:8px 6px; cursor:pointer; font-size:16px;
+                   font-weight:700; writing-mode:vertical-rl; height:80px;">
+        ◀
+    </button>
+
+    <div class="panel summary-panel">
+        <div class="panel-header">📊 Status Summary</div>
 
             <div class="summary-scroll">
                 <table class="summary-table">
