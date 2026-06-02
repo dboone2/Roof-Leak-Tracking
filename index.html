@@ -605,8 +605,38 @@
     </button>
 </div>
 
+<!-- PUSH TO SHAREPOINT BUTTON -->
+<div style="flex-shrink:0; margin-left:10px;">
+    <button id="syncStatusBtn"
+            onclick="pushToSharePoint()"
+            style="background:rgba(255,255,255,0.15); color:white;
+                   border:2px solid rgba(255,255,255,0.4);
+                   padding:10px 20px; border-radius:8px; cursor:pointer;
+                   font-size:13px; font-weight:700; white-space:nowrap;
+                   transition:background 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.28)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+        ⬆️ Push to SharePoint
+    </button>
+</div>
 
-    </div>
+<!-- PULL FROM SHAREPOINT BUTTON -->
+<div style="flex-shrink:0; margin-left:10px;">
+    <button onclick="pullFromSharePoint(false)"
+            style="background:rgba(255,255,255,0.15); color:white;
+                   border:2px solid rgba(255,255,255,0.4);
+                   padding:10px 20px; border-radius:8px; cursor:pointer;
+                   font-size:13px; font-weight:700; white-space:nowrap;
+                   transition:background 0.2s;"
+            onmouseover="this.style.background='rgba(255,255,255,0.28)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+        ⬇️ Pull Latest
+    </button>
+</div>
+
+    </div> 
+
+
 
     <!-- IMPORT TOAST NOTIFICATION -->
     <div class="import-toast" id="importToast">
@@ -856,7 +886,283 @@
     </div>
 
     <script>
+
     // =================================================================
+    // SHAREPOINT SYNC CONFIGURATION — LAP Facilities / RoofGrid
+    // =================================================================
+    const SYNC_CONFIG = {
+        siteUrl:      'https://azureford.sharepoint.com/sites/LAP-Facilities',
+        library:      'Shared Documents',
+        folder:       'RoofGrid',
+        fileName:     'roofgrid_data.json',
+        pollInterval: 30000
+    };
+
+    SYNC_CONFIG.serverRelFolder =
+        `/sites/LAP-Facilities/Shared Documents/RoofGrid`;
+
+    SYNC_CONFIG.filePath =
+        `${SYNC_CONFIG.siteUrl}/_api/web/` +
+        `GetFolderByServerRelativeUrl('${SYNC_CONFIG.serverRelFolder}')` +
+        `/Files('${SYNC_CONFIG.fileName}')`;
+
+    SYNC_CONFIG.uploadPath =
+        `${SYNC_CONFIG.siteUrl}/_api/web/` +
+        `GetFolderByServerRelativeUrl('${SYNC_CONFIG.serverRelFolder}')` +
+        `/Files/add(url='${SYNC_CONFIG.fileName}',overwrite=true)`;
+    // =================================================================
+    // =================================================================
+    // SHAREPOINT SYNC ENGINE
+    // =================================================================
+
+    let syncInProgress    = false;
+    let lastSyncTimestamp = null;
+    let pollTimer         = null;
+    let unsavedChanges    = false;
+
+    function markUnsaved() {
+        unsavedChanges = true;
+        const btn = document.getElementById('syncStatusBtn');
+        if (btn) {
+            btn.innerText         = '🔴 Unsaved Changes';
+            btn.style.background  = 'rgba(220,53,69,0.3)';
+            btn.style.borderColor = 'rgba(220,53,69,0.7)';
+        }
+    }
+
+    function markSaved() {
+        unsavedChanges    = false;
+        lastSyncTimestamp = new Date();
+        const btn = document.getElementById('syncStatusBtn');
+        if (btn) {
+            btn.innerText         = `✅ Synced ${lastSyncTimestamp.toLocaleTimeString()}`;
+            btn.style.background  = 'rgba(255,255,255,0.15)';
+            btn.style.borderColor = 'rgba(255,255,255,0.4)';
+        }
+    }
+
+    function collectLocalState() {
+        const state = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('roofgrid_')) {
+                state[key] = localStorage.getItem(key);
+            }
+        }
+        return state;
+    }
+
+    function applyRemoteState(state) {
+        Object.entries(state).forEach(([key, value]) => {
+            try { localStorage.setItem(key, value); } catch(e) {
+                console.warn('Could not restore key:', key, e);
+            }
+        });
+    }
+
+    async function pushToSharePoint() {
+        if (syncInProgress) return;
+        syncInProgress = true;
+        showSyncToast('⬆️ Saving to SharePoint...', '#1565c0');
+
+        try {
+            const state   = collectLocalState();
+            const payload = JSON.stringify(state, null, 2);
+
+            const digestRes = await fetch(
+                `${SYNC_CONFIG.siteUrl}/_api/contextinfo`, {
+                method:      'POST',
+                credentials: 'include',
+                headers: {
+                    'Accept':       'application/json;odata=nometadata',
+                    'Content-Type': 'application/json;odata=nometadata'
+                }
+            });
+
+            if (digestRes.status === 401 || digestRes.status === 403) {
+                throw new Error(
+                    'Not signed in to SharePoint. ' +
+                    'Open azureford.sharepoint.com in this browser first, ' +
+                    'sign in, then try again.'
+                );
+            }
+            if (!digestRes.ok) throw new Error(
+                `Could not reach SharePoint: ${digestRes.status}`
+            );
+
+            const digestData  = await digestRes.json();
+            const digestValue = digestData.FormDigestValue;
+
+            const uploadRes = await fetch(SYNC_CONFIG.uploadPath, {
+                method:      'POST',
+                credentials: 'include',
+                headers: {
+                    'Accept':          'application/json;odata=nometadata',
+                    'Content-Type':    'application/octet-stream',
+                    'X-RequestDigest': digestValue
+                },
+                body: payload
+            });
+
+            if (uploadRes.status === 401 || uploadRes.status === 403) {
+                throw new Error(
+                    'Permission denied. Make sure you have Edit access ' +
+                    'to the RoofGrid folder on the LAP-Facilities site.'
+                );
+            }
+            if (!uploadRes.ok) throw new Error(
+                `Upload failed: ${uploadRes.status} ${uploadRes.statusText}`
+            );
+
+            markSaved();
+            showSyncToast(
+                `✅ Saved — ${Object.keys(state).length} records synced to SharePoint.`,
+                '#1b5e20'
+            );
+
+        } catch (err) {
+            console.error('SharePoint push failed:', err);
+            showSyncToast(`❌ ${err.message}`, '#7f0000', 8000);
+        } finally {
+            syncInProgress = false;
+        }
+    }
+
+    async function pullFromSharePoint(silent = false) {
+        if (syncInProgress) return;
+        syncInProgress = true;
+
+        if (!silent) showSyncToast(
+            '⬇️ Loading latest data from SharePoint...', '#1565c0'
+        );
+
+        try {
+            const url = `${SYNC_CONFIG.filePath}/$value?v=${Date.now()}`;
+
+            const res = await fetch(url, {
+                method:      'GET',
+                credentials: 'include',
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (res.status === 404) {
+                if (!silent) showSyncToast(
+                    '📋 No remote data found yet. ' +
+                    'Click ⬆️ Push to SharePoint to create it.',
+                    '#e65100', 4000
+                );
+                return;
+            }
+
+            if (res.status === 401 || res.status === 403) {
+                throw new Error(
+                    'Not signed in to SharePoint. ' +
+                    'Open azureford.sharepoint.com in this browser first.'
+                );
+            }
+
+            if (!res.ok) throw new Error(
+                `Download failed: ${res.status} ${res.statusText}`
+            );
+
+            const text  = await res.text();
+            const state = JSON.parse(text);
+
+            applyRemoteState(state);
+            initializeGridFromStorage();
+            recalculateTotals();
+
+            lastSyncTimestamp = new Date();
+            markSaved();
+
+            if (!silent) showSyncToast(
+                `✅ Grid updated — data loaded as of ` +
+                `${lastSyncTimestamp.toLocaleTimeString()}.`,
+                '#1b5e20'
+            );
+
+        } catch (err) {
+            console.error('SharePoint pull failed:', err);
+            if (!silent) showSyncToast(`❌ ${err.message}`, '#7f0000', 6000);
+        } finally {
+            syncInProgress = false;
+        }
+    }
+
+    function startAutoSync() {
+        if (!SYNC_CONFIG.pollInterval || SYNC_CONFIG.pollInterval < 5000) return;
+        pollTimer = setInterval(async () => {
+            if (!unsavedChanges) {
+                await pullFromSharePoint(true);
+            }
+        }, SYNC_CONFIG.pollInterval);
+        console.log(
+            `🔄 Auto-sync started — checking every ${SYNC_CONFIG.pollInterval / 1000}s`
+        );
+    }
+
+    function showSyncToast(message, bgColor = '#1b5e20', duration = 4000) {
+        const toast    = document.getElementById('importToast');
+        const toastMsg = document.getElementById('importToastMsg');
+        const title    = toast ? toast.querySelector('.toast-title') : null;
+
+        if (!toast || !toastMsg) return;
+        if (title)  title.style.display = 'none';
+
+        toast.style.background =
+            `linear-gradient(135deg, ${bgColor}, ${bgColor}cc)`;
+        toastMsg.innerText  = message;
+        toast.style.display = 'block';
+
+        clearTimeout(toast._hideTimer);
+        toast._hideTimer = setTimeout(() => {
+            toast.style.display = 'none';
+            if (title) title.style.display = '';
+            toast.style.background = '';
+        }, duration);
+    }
+
+    function initializeGridFromStorage() {
+        restoreAllStatuses();
+        restoreCommentIndicators();
+        recalculateTotals();
+    }
+
+    // ── WIRE UP: MARK DIRTY AFTER EVERY SAVE ─────────────────────────
+    const _origConfirm = confirmStatusChange;
+    confirmStatusChange = function() {
+        _origConfirm.apply(this, arguments);
+        markUnsaved();
+    };
+
+    const _origUpdate = saveUpdateEntry;
+    saveUpdateEntry = function() {
+        _origUpdate.apply(this, arguments);
+        markUnsaved();
+    };
+
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            pullFromSharePoint(false);
+            startAutoSync();
+        }, 800);
+    });
+
+    window.addEventListener('beforeunload', (e) => {
+        if (unsavedChanges) {
+            e.preventDefault();
+            e.returnValue =
+                'You have unsaved changes. ' +
+                'Click ⬆️ Push to SharePoint before leaving.';
+        }
+    });
+
+    // =================================================================
+    // END SHAREPOINT SYNC ENGINE
+    // =================================================================
+
+    
+ // =================================================================
     // 1. STATUS CONFIGURATION
     // =================================================================
     const statuses = [
