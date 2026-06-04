@@ -1,0 +1,1863 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 Roof Condition Grid — Paint Building (PB)</title>
+    <!-- 
+      This is a standalone template specifically configured for the Paint Building.
+      Grid dimensions: Rows A-K, Columns 1-36 (no leading zeros).
+      It uses separate storage ('roofgrid_pb_') and filters CSV imports to only capture PB leaks.
+    -->
+    <style>
+       body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background: #eef1f6; min-height: 100vh; }
+
+/* APP HEADER */
+.app-header {
+    background: linear-gradient(135deg, #00529b 0%, #002f5f 100%);
+    color: white; padding: 16px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.25); flex-wrap: wrap; gap: 8px;
+}
+.header-left  { display: flex; align-items: center; gap: 14px; }
+.header-icon  { font-size: 30px; }
+.header-title { font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
+.header-sub   { font-size: 12px; opacity: 0.72; margin-top: 3px; }
+.header-right { font-size: 12px; opacity: 0.65; text-align: right; line-height: 1.8; }
+
+/* MAIN LAYOUT */
+.main-layout { display: flex; gap: 18px; padding: 20px 24px; align-items: flex-start; }
+
+
+        /* PANELS */
+        .panel {
+            background: white; border-radius: 12px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.09);
+            overflow: hidden; display: flex; flex-direction: column;
+            height: calc(100vh - 110px);
+
+        }
+        .panel-header {
+            background: #f4f6fa; border-bottom: 2px solid #e3e8ef;
+            padding: 10px 16px; font-size: 11px; font-weight: 700;
+            color: #667; text-transform: uppercase; letter-spacing: 1.3px;
+            display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+        }
+
+        /* GRID PANEL */
+        .grid-panel { flex: 1; min-width: 0; }
+        .grid-container { overflow: auto; flex: 1; background-color: #f5f7fa; }
+        table { border-collapse: collapse; background-color: #ffffff; width: max-content; }
+        th, td { border: 1px solid #ddd; padding: 0; text-align: center; position: relative; width: 55px; height: 32px; box-sizing: border-box; }
+        th { background-color: #002c5f; color: white; font-size: 11px; position: sticky; top: 0; z-index: 10; }
+        td.row-label { background-color: #002c5f; color: white; font-weight: bold; font-size: 11px; position: sticky; left: 0; z-index: 5; width: 35px; }
+        select { border: none; background: transparent; width: 100%; height: 100%; cursor: pointer; font-weight: bold; font-size: 11px; text-align: center; outline: none; appearance: none; }
+        
+        /* SUMMARY PANEL */
+        .summary-panel { width: 460px; flex-shrink: 0; transition: width 0.3s ease, opacity 0.3s ease, min-width 0.3s ease; }
+        .summary-panel.collapsed { width: 0 !important; min-width: 0 !important; opacity: 0; overflow: hidden; padding: 0; }
+        .summary-scroll { overflow-y: auto; flex: 1; }
+        .summary-table { border-collapse: collapse; width: 100%; }
+        .summary-table thead th { background: #002c5f; color: white; font-size: 11px; padding: 10px 8px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; position: sticky; top: 0; }
+        .summary-table tbody tr { transition: background 0.15s; }
+        .summary-table tbody tr:hover td { background-color: #f0f6ff !important; }
+        .summary-table td { padding: 8px 10px; border: 1px solid #eaecf0; vertical-align: middle; }
+        .code-cell { text-align: center; width: 52px; font-size: 13px; font-weight: 800; }
+        .desc-cell { font-size: 12px; font-weight: 600; color: #222; text-align: left; line-height: 1.35; }
+        .desc-sub { font-size: 11px; color: #888; font-weight: 400; font-style: italic; margin-top: 2px; display: block; }
+        .count-cell { text-align: center; width: 60px; font-size: 18px; font-weight: 800; color: #002c5f; }
+        .summary-divider td { background: #2d4a6e; color: #c8d8f0; font-size: 10px; font-weight: 700; padding: 5px 10px; letter-spacing: 1.5px; text-transform: uppercase; }
+        tfoot .grand-row td { background: #1e3552; color: #fff; font-size: 14px; font-weight: 800; padding: 11px 10px; }
+        tfoot .grand-row .count-cell { color: #64b5f6; font-size: 20px; }
+
+        /* COLLAPSE BUTTON */
+        .toggle-btn {
+            background: #2d4a6e; color: white; border: 2px solid #4a6a8e; border-radius: 8px;
+            padding: 8px 6px; cursor: pointer; font-size: 16px; font-weight: 700;
+            align-self: center; flex-shrink: 0; height: 80px; writing-mode: vertical-rl;
+            transition: background 0.2s; line-height: 1; margin: 0 4px;
+        }
+        .toggle-btn:hover { background: #3d5a7e; }
+
+        /* HOVER TOOLTIP */
+        #customTooltip {
+            position: absolute; display: none; background: rgba(10,20,40,0.92); color: #fff;
+            padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600;
+            pointer-events: none; z-index: 9999; box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+            line-height: 1.5; border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* Status Colors */
+        .status- { background-color: #ffffff; }
+        .status-S1 { background-color: #EBF5FF; color: #003366; }
+        .status-S2 { background-color: #BDD7EE; color: #003366; }
+        .status-S3 { background-color: #FFF2CC; color: #7d6000; }
+        .status-S4 { background-color: #FFEB9C; color: #9C5700; }
+        .status-S5 { background-color: #FFC7CE; color: #9C0006; }
+        .status-ACT { background-color: #C6EFCE; color: #006100; }
+        .status-DRN { background-color: #FCE4D6; color: #C65911; }
+        .status-LD { background-color: #EDEDED; color: #444; }
+        .status-RD { background-color: #D0CECE; color: #333; }
+        .status-AD { background-color: #AEAAAA; color: #fff; }
+        .status-REP { background-color: #E2EFDA; color: #375623; }
+
+        .has-comments::after { content: '💬'; font-size: 7px; position: absolute; top: 2px; right: 2px; }
+        td { position: relative; }
+
+        .btn-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        button { padding: 10px 16px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .btn-primary { background-color: #002c5f; color: white; }
+        .btn-success { background-color: #2e7d32; color: white; }
+        .btn-danger { background-color: #c62828; color: white; }
+               /* MODALS */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(10,20,40,0.72);
+            z-index: 10000; justify-content: center; align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: #fff; border-radius: 12px; width: 600px;
+            max-height: 90vh; display: flex; flex-direction: column;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.35); overflow: hidden;
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #00529b, #003366);
+            color: white; padding: 18px 22px;
+        }
+        .modal-header h2 { margin: 0 0 10px 0; font-size: 17px; font-weight: 700; }
+        .modal-status-row  { display: flex; align-items: flex-start; gap: 12px; }
+        .modal-status-code {
+            background: rgba(255,255,255,0.18); color: white;
+            font-weight: 800; font-size: 16px; padding: 6px 18px;
+            border-radius: 20px; white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.25); flex-shrink: 0;
+        }
+        .modal-status-desc { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+        .modal-status-sub  { font-size: 12px; opacity: 0.82; line-height: 1.5; }
+        .modal-body {
+            padding: 18px 22px; overflow-y: auto; flex-grow: 1; background: #f5f7fa;
+        }
+        .modal-body h3 {
+            margin: 0 0 12px 0; font-size: 11px; color: #aaa;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            border-bottom: 2px solid #e3e8ef; padding-bottom: 8px; font-weight: 700;
+        }
+        .severity-legend {
+            display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 16px;
+            padding: 10px 12px; background: #fff; border-radius: 8px;
+            border: 1px solid #e3e8ef; align-items: center;
+        }
+        .leg-label { font-size: 11px; font-weight: 700; color: #666; margin-right: 4px; }
+        .pill { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 12px; }
+        .pill-S1 { background: #EBF5FF; color: #003366; }
+        .pill-S2 { background: #BDD7EE; color: #003366; }
+        .pill-S3 { background: #FFF2CC; color: #7d6000; }
+        .pill-S4 { background: #FFEB9C; color: #9C5700; }
+        .pill-S5 { background: #FFC7CE; color: #9C0006; }
+        .required-notice {
+            background: #fffde7; border-left: 4px solid #fbc02d;
+            border-radius: 6px; padding: 10px 14px; margin-bottom: 14px;
+            font-size: 13px; color: #5d4037; font-weight: 600;
+        }
+        .history-entry {
+            background: #fff; border-left: 4px solid #00529b; border-radius: 8px;
+            padding: 12px 14px; margin-bottom: 12px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.06);
+        }
+        .history-entry.imported { border-left-color: #78909c; }
+        .he-timestamp { font-size: 11px; color: #bbb; margin-bottom: 5px; }
+        .he-imported-tag {
+            display: inline-block; font-size: 10px; background: #eceff1;
+            color: #546e7a; border-radius: 8px; padding: 1px 7px;
+            margin-bottom: 5px; font-weight: 600;
+        }
+        .he-status  { font-size: 13px; font-weight: 800; color: #00529b; }
+        .he-desc    { font-size: 12px; color: #555; font-weight: 600; margin-top: 2px; }
+        .he-sub     { font-size: 11px; color: #bbb; font-style: italic; margin: 3px 0 8px; line-height: 1.5; }
+        .he-clabel  { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #bbb; margin: 8px 0 4px; }
+        .he-comment { font-size: 13px; color: #333; white-space: pre-wrap; line-height: 1.6; }
+        .no-history { text-align: center; color: #ccc; font-style: italic; padding: 28px 0; font-size: 14px; line-height: 1.7; }
+        .history-photo-wrap  { margin-top: 10px; }
+        .history-photo-label { font-size: 10px; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+        .history-photo-thumb {
+            max-width: 100%; max-height: 180px; border-radius: 8px;
+            border: 2px solid #e3e8ef; cursor: zoom-in; display: block; transition: border-color 0.2s;
+        }
+        .history-photo-thumb:hover { border-color: #00529b; }
+                /* PHOTO SECTION */
+        .photo-section {
+            margin-top: 12px; border: 2px dashed #cdd5e0; border-radius: 8px;
+            padding: 12px 14px; background: #fafbfd; transition: border-color 0.2s;
+        }
+        .photo-section:hover { border-color: #00529b; }
+        .photo-section-title {
+            font-size: 11px; font-weight: 700; color: #778; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+            text-transform: uppercase; letter-spacing: 0.8px;
+        }
+        .photo-optional-tag {
+            font-size: 10px; font-weight: 600; color: #aaa;
+            background: #eef0f4; border-radius: 10px; padding: 2px 8px; text-transform: none;
+        }
+        .photo-btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .btn-camera {
+            display: flex; align-items: center; gap: 6px;
+            background: #0097a7; color: white; border: none;
+            padding: 8px 16px; border-radius: 8px; cursor: pointer;
+            font-size: 12px; font-weight: 700; transition: background 0.2s;
+        }
+        .btn-camera:hover { background: #00838f; }
+        .btn-remove-photo {
+            background: none; border: 1.5px solid #dc3545; color: #dc3545;
+            padding: 6px 12px; border-radius: 8px; cursor: pointer;
+            font-size: 12px; font-weight: 600; display: none; transition: all 0.2s;
+        }
+        .btn-remove-photo:hover { background: #dc3545; color: white; }
+        #photoPreviewWrap { margin-top: 10px; display: none; }
+        #photoPreviewWrap .preview-label {
+            font-size: 10px; color: #bbb; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+        }
+        #photoPreview { max-width: 100%; max-height: 150px; border-radius: 8px; border: 2px solid #00529b; display: block; }
+
+        /* FULL SIZE IMAGE VIEWER */
+        #imageViewer {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.94);
+            z-index: 99999; justify-content: center; align-items: center;
+        }
+        #imageViewer.active { display: flex; }
+        #imageViewer img { max-width: 92vw; max-height: 92vh; border-radius: 10px; cursor: zoom-out; }
+        .close-viewer {
+            position: absolute; top: 20px; right: 28px; color: white;
+            font-size: 36px; cursor: pointer; background: none;
+            border: none; font-weight: 700; line-height: 1;
+        }
+
+
+        /* MODAL FOOTER */
+        .modal-footer { padding: 16px 22px; border-top: 2px solid #eef0f4; background: #fff; }
+        .field-label {
+            font-size: 11px; font-weight: 700; color: #667; display: block;
+            margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.8px;
+        }
+        .required-star { color: #dc3545; }
+        .modal-footer textarea {
+            width: 100%; height: 82px; border: 2px solid #dde3ec; border-radius: 8px;
+            padding: 10px; font-size: 13px; line-height: 1.5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            resize: none; box-sizing: border-box; transition: border-color 0.2s; color: #333;
+        }
+        .modal-footer textarea:focus { outline: none; border-color: #00529b; }
+        .modal-footer textarea.error { border-color: #dc3545; background: #fff8f8; }
+        .error-msg { color: #dc3545; font-size: 12px; margin-top: 5px; display: none; }
+        .error-msg.visible { display: block; }
+        
+	.modal-btn-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+        .btn-save {
+            background: #00529b; color: white; border: none;
+            padding: 10px 24px; border-radius: 8px; cursor: pointer;
+            font-size: 14px; font-weight: 700; transition: background 0.2s;
+        }
+        .btn-save:hover  { background: #003d75; }
+        .btn-cancel {
+            background: #dc3545; color: white; border: none;
+            padding: 10px 24px; border-radius: 8px; cursor: pointer;
+            font-size: 14px; font-weight: 700; transition: background 0.2s;
+        }
+        .btn-cancel:hover { background: #b02a37; }
+
+        .toast { position: fixed; bottom: 20px; right: 20px; background: #323232; color: white; padding: 12px 24px; border-radius: 4px; display: none; z-index: 200; box-shadow: 0 3px 10px rgba(0,0,0,0.2); }
+
+                /* 🌟 TOGGLE REP BAYS FEATURE */
+        .hide-rep td.status-REP {
+            background-color: #ffffff !important;
+        }
+        .hide-rep td.status-REP select {
+            color: transparent !important;
+        }
+        .hide-rep td.status-REP::after {
+            display: none !important;
+        }
+
+        /* 🖨️ PRINT STYLES */
+        @media print {
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+            /* Hide all UI controls */
+                        .app-header, #customTooltip,
+            .modal-overlay, #importToast,
+            .toggle-btn, .summary-panel,
+            #reportModal { display: none !important; }
+
+
+
+            /* Make grid fill the page cleanly */
+            body { background: white !important; padding: 0 !important; margin: 0 !important; }
+            .main-layout { display: block !important; }
+            .panel { height: auto !important; box-shadow: none !important; border-radius: 0 !important; }
+            .grid-container { overflow: visible !important; height: auto !important; }
+            table { width: 100% !important; }
+            th, td { width: auto !important; font-size: 8px !important; height: 18px !important; }
+
+            /* 🌟 KEY FIX: REP toggle state is respected during print */
+            #mainGrid.hide-rep td.status-REP {
+                background-color: #ffffff !important;
+            }
+            #mainGrid.hide-rep td.status-REP select {
+                visibility: hidden !important;
+            }
+            #mainGrid.hide-rep td.status-REP::after {
+                display: none !important;
+            }
+
+            /* Force all status colors to print */
+            .status-S1  { background-color: #EBF5FF !important; color: #003366 !important; }
+            .status-S2  { background-color: #BDD7EE !important; color: #003366 !important; }
+            .status-S3  { background-color: #FFF2CC !important; color: #7d6000 !important; }
+            .status-S4  { background-color: #FFEB9C !important; color: #9C5700 !important; }
+            .status-S5  { background-color: #FFC7CE !important; color: #9C0006 !important; }
+            .status-ACT { background-color: #C6EFCE !important; color: #006100 !important; }
+            .status-DRN { background-color: #FCE4D6 !important; color: #C65911 !important; }
+            .status-LD  { background-color: #EDEDED !important; color: #444    !important; }
+            .status-RD  { background-color: #D0CECE !important; color: #333    !important; }
+            .status-AD  { background-color: #AEAAAA !important; color: #fff    !important; }
+            .status-REP { background-color: #E2EFDA !important; color: #375623 !important; }            
+	    /* Print legend pills */
+            .print-legend { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; padding: 8px 10px; border: 1px solid #dde3ec; border-radius: 6px; background: #f9fafc; }
+            .print-legend-title { font-size: 10px; font-weight: 800; color: #444; text-transform: uppercase; letter-spacing: 1px; width: 100%; margin-bottom: 4px; }
+            .print-pill { font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.1); }
+            .print-cell-S1  { background-color: #EBF5FF !important; color: #003366 !important; }
+            .print-cell-S2  { background-color: #BDD7EE !important; color: #003366 !important; }
+            .print-cell-S3  { background-color: #FFF2CC !important; color: #7d6000 !important; }
+            .print-cell-S4  { background-color: #FFEB9C !important; color: #9C5700 !important; }
+            .print-cell-S5  { background-color: #FFC7CE !important; color: #9C0006 !important; }
+            .print-cell-ACT { background-color: #C6EFCE !important; color: #006100 !important; }
+            .print-cell-DRN { background-color: #FCE4D6 !important; color: #C65911 !important; }
+            .print-cell-LD  { background-color: #EDEDED !important; color: #444    !important; }
+            .print-cell-RD  { background-color: #D0CECE !important; color: #333    !important; }
+            .print-cell-AD  { background-color: #AEAAAA !important; color: #fff    !important; }
+            .print-cell-REP { background-color: #E2EFDA !important; color: #375623 !important; }
+            .print-cell-    { background-color: #ffffff !important; }
+
+        }
+        /* DETAILED REPORT MODAL */
+        #reportModal {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(10,20,40,0.82);
+            z-index: 99998; justify-content: center; align-items: center;
+        }
+        #reportModal.active { display: flex; }
+        #reportBox {
+            background: #fff; border-radius: 14px; width: 860px;
+            max-height: 93vh; display: flex; flex-direction: column;
+            box-shadow: 0 28px 70px rgba(0,0,0,0.45); overflow: hidden;
+        }
+        #reportHeader {
+            background: linear-gradient(135deg, #00529b, #002f5f);
+            color: white; padding: 18px 24px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+        }
+        #reportHeader h2 { margin: 0; font-size: 17px; font-weight: 700; }
+        #reportHeader .rh-sub { font-size: 12px; opacity: 0.72; margin-top: 3px; }
+        .btn-close-report {
+            background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.35);
+            color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer;
+            font-size: 13px; font-weight: 700; transition: background 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .btn-close-report:hover { background: rgba(255,255,255,0.28); }
+        #reportToolbar {
+            background: #f4f6fa; border-bottom: 2px solid #e3e8ef;
+            padding: 10px 18px; display: flex; gap: 10px; flex-wrap: wrap;
+            align-items: center; flex-shrink: 0;
+        }
+        .rpt-filter-btn {
+            font-size: 11px; font-weight: 700; padding: 6px 14px;
+            border-radius: 20px; border: 2px solid #dde3ec;
+            background: white; color: #555; cursor: pointer; transition: all 0.18s;
+        }
+        .rpt-filter-btn.active { background: #00529b; color: white; border-color: #00529b; }
+        .rpt-filter-btn:hover:not(.active) { background: #eef3fa; border-color: #aac4e8; }
+        #reportSearch {
+            margin-left: auto; padding: 7px 14px; border: 2px solid #dde3ec;
+            border-radius: 20px; font-size: 12px; outline: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: border-color 0.2s; width: 180px;
+        }
+        #reportSearch:focus { border-color: #00529b; }
+        #reportBody {
+            overflow-y: auto; flex-grow: 1; padding: 18px 22px; background: #f5f7fa;
+        }
+        .report-stats-row {
+            display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px;
+        }
+        .report-stat-card {
+            background: white; border-radius: 10px; padding: 12px 18px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.07); flex: 1; min-width: 100px;
+            text-align: center; border-top: 4px solid #00529b;
+        }
+        .report-stat-card.card-active  { border-top-color: #c6efce; }
+        .report-stat-card.card-sev     { border-top-color: #ffc7ce; }
+        .report-stat-card.card-rep     { border-top-color: #e2efda; }
+        .report-stat-card.card-photo   { border-top-color: #0097a7; }
+        .rsc-num  { font-size: 26px; font-weight: 800; color: #00529b; line-height: 1.1; }
+        .rsc-label{ font-size: 10px; font-weight: 700; color: #888;
+                    text-transform: uppercase; letter-spacing: 0.8px; margin-top: 4px; }
+        .report-section-title {
+            font-size: 11px; font-weight: 700; color: #aaa; margin: 0 0 12px 0;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            border-bottom: 2px solid #e3e8ef; padding-bottom: 8px;
+        }
+        .report-bay-card {
+            background: white; border-radius: 10px; margin-bottom: 14px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.07); overflow: hidden;
+            border-left: 5px solid #00529b;
+        }
+        .rbc-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 14px; background: #fafbfd; border-bottom: 1px solid #eef0f4;
+            cursor: pointer; user-select: none;
+        }
+        .rbc-header:hover { background: #f0f6ff; }
+        .rbc-bay   { font-size: 14px; font-weight: 800; color: #00529b; }
+        .rbc-status{ font-size: 11px; font-weight: 700; padding: 4px 12px;
+                     border-radius: 14px; }
+        .rbc-meta  { font-size: 11px; color: #aaa; }
+        .rbc-body  { padding: 12px 14px; display: none; }
+        .rbc-body.open { display: block; }
+        .rbc-log-entry {
+            border-left: 3px solid #e3e8ef; padding: 8px 12px; margin-bottom: 10px;
+            border-radius: 4px; background: #fafbfd;
+        }
+        .rbc-log-entry.first { border-left-color: #00529b; }
+        .rle-ts    { font-size: 10px; color: #bbb; margin-bottom: 3px; }
+        .rle-status{ font-size: 12px; font-weight: 800; color: #00529b; }
+        .rle-comment{ font-size: 12px; color: #444; margin-top: 4px;
+                      white-space: pre-wrap; line-height: 1.5; }
+        .rle-photo { margin-top: 8px; }
+        .rle-photo img {
+            max-width: 100%; max-height: 140px; border-radius: 6px;
+            border: 2px solid #e3e8ef; cursor: zoom-in; display: block;
+            transition: border-color 0.2s;
+        }
+        .rle-photo img:hover { border-color: #00529b; }
+        .no-report-results {
+            text-align: center; color: #ccc; font-style: italic;
+            padding: 40px 0; font-size: 14px; line-height: 1.8;
+        }
+        #reportFooter {
+            padding: 12px 22px; border-top: 2px solid #eef0f4; background: white;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+        }
+        #reportFooter .rf-info { font-size: 11px; color: #aaa; }
+        .btn-print-report {
+            background: #00529b; color: white; border: none;
+            padding: 9px 20px; border-radius: 8px; cursor: pointer;
+            font-size: 13px; font-weight: 700; transition: background 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .btn-print-report:hover { background: #003d75; }
+        /* REPORT STATUS FILTER PILLS */
+        .rpt-status-row {
+            width: 100%; display: flex; gap: 6px; flex-wrap: wrap;
+            align-items: center; padding-top: 8px;
+            border-top: 1px solid #e3e8ef; margin-top: 4px;
+        }
+        .rpt-status-label {
+            font-size: 10px; font-weight: 700; color: #aaa;
+            text-transform: uppercase; letter-spacing: 0.8px; margin-right: 2px;
+            white-space: nowrap;
+        }
+        .rpt-status-pill {
+            font-size: 10px; font-weight: 700; padding: 4px 10px;
+            border-radius: 12px; border: 2px solid transparent;
+            cursor: pointer; transition: all 0.18s; white-space: nowrap;
+        }
+        .rpt-status-pill:hover { opacity: 0.8; transform: scale(1.06); }
+        .rpt-status-pill.active {
+            border-color: #222 !important;
+            box-shadow: 0 0 0 2px rgba(0,0,0,0.18);
+            transform: scale(1.08);
+        }
+        .rpt-clear-status {
+            font-size: 10px; font-weight: 700; padding: 4px 12px;
+            border-radius: 12px; border: 2px solid #dde3ec;
+            background: white; color: #888; cursor: pointer;
+            transition: all 0.18s; display: none; margin-left: auto;
+        }
+        .rpt-clear-status:hover { background: #fff0f0; border-color: #dc3545; color: #dc3545; }
+/* REPORT BUILDER — MB ENGINE PORT */
+.report-filter-grid {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 12px; background: #fff; border-radius: 8px;
+    border: 1px solid #e3e8ef;
+}
+.report-filter-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 20px; cursor: pointer;
+    font-size: 12px; font-weight: 700;
+    border: 2px solid transparent; transition: all 0.2s;
+    user-select: none;
+}
+.report-filter-chip.selected { border-color: #222 !important; box-shadow: 0 0 0 2px rgba(0,0,0,0.15); }
+.report-filter-chip input { display: none; }
+.report-radio-group {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 12px; background: #fff; border-radius: 8px;
+    border: 1px solid #e3e8ef;
+}
+.report-radio-label {
+    font-size: 13px; font-weight: 600; color: #333;
+    cursor: pointer; display: flex; align-items: center; gap: 10px;
+}
+.report-toggle-label {
+    font-size: 13px; font-weight: 600; color: #333;
+    cursor: pointer; display: flex; align-items: center; gap: 10px;
+    padding: 12px; background: #fff; border-radius: 8px;
+    border: 1px solid #e3e8ef;
+}
+.report-sort-notice {
+    margin-top: 14px; background: #e8f4fd;
+    border-left: 4px solid #00529b; padding: 10px 14px;
+    border-radius: 6px; font-size: 12px; color: #003366; font-weight: 600;
+}
+.report-section-divider {
+    background: linear-gradient(135deg, #2d4a6e, #1e3552);
+    color: white; padding: 9px 14px; border-radius: 8px;
+    font-size: 11px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 1.2px; margin: 18px 0 10px;
+    display: flex; align-items: center; gap: 8px;
+}
+.report-bay-card {
+    background: #fff; border-radius: 10px; margin-bottom: 12px;
+    border: 1px solid #e3e8ef; overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.report-bay-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-bottom: 1px solid #e3e8ef;
+    background: #f8fafc; flex-wrap: wrap;
+}
+.report-bay-id { font-size: 15px; font-weight: 800; color: #1e3552; }
+.report-bay-status-badge {
+    font-size: 11px; font-weight: 800; padding: 4px 14px; border-radius: 14px;
+}
+.report-bay-body { padding: 12px 14px; }
+.report-entry {
+    border-left: 3px solid #00529b; padding: 10px 12px;
+    margin-bottom: 10px; background: #f5f7fa;
+    border-radius: 0 8px 8px 0;
+}
+.report-entry.imported { border-left-color: #78909c; }
+.report-entry-timestamp {
+    font-size: 11px; color: #999; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.report-entry-status { font-size: 12px; font-weight: 800; color: #00529b; margin-bottom: 4px; }
+.report-entry-comment { font-size: 12px; color: #333; white-space: pre-wrap; line-height: 1.6; }
+.report-entry-photo {
+    max-width: 100%; max-height: 220px; border-radius: 8px;
+    border: 2px solid #e3e8ef; margin-top: 10px;
+    display: block; cursor: zoom-in; transition: border-color 0.2s;
+}
+.report-entry-photo:hover { border-color: #00529b; }
+.report-no-results {
+    text-align: center; color: #ccc; font-style: italic;
+    padding: 48px 0; font-size: 14px; line-height: 1.8;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="app-header">
+    <div class="header-left">
+
+        <span class="header-icon">🎨</span>
+        <div>
+            <div class="header-title">Roof Condition Grid — Paint Building</div>
+            <div class="header-sub">Bay Status Tracker — Double-click any cell to view full history log</div>
+        </div>
+    </div>
+    <div class="header-right">
+        💡 Select a status to log an entry &nbsp;|&nbsp; 📷 Photos can be attached<br>
+        💬 Double-click any bay to view its full history
+    </div>
+
+    <!-- TOGGLE REP BUTTON -->
+    <div style="flex-shrink:0; margin-left:10px;">
+        <button id="toggleRepBtn" onclick="toggleRepBays()"
+                style="background:#37474f; color:white; border:2px solid #263238;
+                       padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px;
+                       font-weight:700; display:flex; align-items:center; gap:8px;
+                       transition:background 0.2s; white-space:nowrap;"
+                onmouseover="this.style.background='#263238'"
+                onmouseout="this.style.background='#37474f'">
+            👁️ Hide Repaired (REP)
+        </button>
+    </div>
+
+    <!-- EXPORT BUTTON -->
+    <div style="flex-shrink:0; margin-left:10px;">
+        <button onclick="exportUpdatedHTML()"
+                style="background:#00796b; color:white; border:2px solid #004d40;
+                       padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px;
+                       font-weight:700; display:flex; align-items:center; gap:8px;
+                       transition:background 0.2s; white-space:nowrap;"
+                onmouseover="this.style.background='#00695c'"
+                onmouseout="this.style.background='#00796b'">
+            💾 Export &amp; Save Changes
+        </button>
+    </div>
+
+    <!-- IMPORT CSV BUTTON -->
+    <div style="flex-shrink:0; margin-left:10px;">
+        <button onclick="triggerCSVInput()"
+                style="background:#0288d1; color:white; border:2px solid #01579b;
+                       padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px;
+                       font-weight:700; display:flex; align-items:center; gap:8px;
+                       transition:background 0.2s; white-space:nowrap;"
+                onmouseover="this.style.background='#0277bd'"
+                onmouseout="this.style.background='#0288d1'">
+            📥 Import Spreadsheet (CSV)
+        </button>
+        <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVUpload(this)" style="display:none;">
+    </div>
+    <!-- PRINT BUTTON -->
+    <div style="flex-shrink:0; margin-left:10px;">
+        <button onclick="openPrintView()"
+                style="background:rgba(255,255,255,0.15); color:white; border:2px solid rgba(255,255,255,0.4);
+                       padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px;
+                       font-weight:700; display:flex; align-items:center; gap:8px;
+                       transition:background 0.2s; white-space:nowrap;"
+                onmouseover="this.style.background='rgba(255,255,255,0.28)'"
+                onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+            🖨️ Print Grid
+        </button>
+    </div>
+    <!-- DETAILED REPORT BUTTON -->
+    <div style="flex-shrink:0; margin-left:10px;">
+        <button onclick="openReportBuilder()"
+
+                style="background:rgba(255,255,255,0.15); color:white; border:2px solid rgba(255,255,255,0.4);
+                       padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px;
+                       font-weight:700; display:flex; align-items:center; gap:8px;
+                       transition:background 0.2s; white-space:nowrap;"
+                onmouseover="this.style.background='rgba(255,255,255,0.28)'"
+                onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+            📋 Detailed Report
+        </button>
+    </div>
+
+</div>
+
+<!-- HOVER TOOLTIP ELEMENT -->
+<div id="customTooltip"></div>
+<!-- FULL SIZE IMAGE VIEWER -->
+<div id="imageViewer">
+    <button class="close-viewer" id="closeViewerBtn">✕</button>
+    <img id="viewerImg" src="" alt="Full size photo">
+</div>
+
+<!-- MAIN TWO-COLUMN LAYOUT -->
+<div class="main-layout">
+    
+    <!-- LEFT PANEL: GRID -->
+    <div class="panel grid-panel">
+        <div class="panel-header">🗺️ Roof Bay Grid &mdash; Paint Building (PB)</div>
+        <div class="grid-container">
+            <table id="mainGrid"></table>
+        </div>
+    </div>
+
+    <!-- TOGGLE BUTTON -->
+    <button class="toggle-btn" id="toggleSummaryBtn" onclick="toggleSummary()" title="Collapse Summary">◀</button>
+
+    <!-- RIGHT PANEL: COLLAPSIBLE SUMMARY -->
+    <div class="panel summary-panel" id="summaryPanel">
+        <div class="panel-header">📊 Status Summary</div>
+        <div class="summary-scroll">
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th style="width:52px;">Code</th>
+                        <th>Description</th>
+                        <th style="width:62px;">Count</th>
+                    </tr>
+                </thead>
+                <tbody id="summaryBody"></tbody>
+                <tfoot>
+                    <tr class="grand-row">
+                        <td colspan="2" style="text-align:left;padding-left:12px;">GRAND TOTAL</td>
+                        <td class="count-cell" id="grandTotal">0</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Import Toast -->
+<div id="importToast" class="toast">
+    <span id="importToastMsg"></span>
+</div>
+
+<!-- Comment Modal -->
+<div class="modal-overlay" id="commentModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 id="commentModalTitle">📍 Bay Log Entry</h2>
+            <div class="modal-status-row">
+                <span class="modal-status-code" id="modalStatusCode"></span>
+                <div>
+                    <div class="modal-status-desc" id="modalStatusDesc"></div>
+                    <div class="modal-status-sub"  id="modalStatusSub"></div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-body">
+            <div class="severity-legend">
+                <span class="leg-label">⚠️ Scale:</span>
+                <span class="pill pill-S1">S1 — Aisles</span>
+                <span class="pill pill-S2">S2 — Walkways</span>
+                <span class="pill pill-S3">S3 — Equipment</span>
+                <span class="pill pill-S4">S4 — Control Panels</span>
+                <span class="pill pill-S5">S5 — ⚡ Electrical Hazard</span>
+            </div>
+            <h3>📋 Previous Activity</h3>
+            <div id="commentModalHistory"></div>
+        </div>
+        <div class="modal-footer">
+            <div class="required-notice">
+                ⚠️ A comment is <strong>required</strong> before this status is recorded. Click <strong>Cancel</strong> to revert.
+            </div>
+            <label class="field-label" for="commentInput">
+                Comment <span class="required-star">★ Required</span>
+            </label>
+            <textarea id="commentInput" placeholder="Describe the condition, exact location, action taken, or observations for this bay..."></textarea>
+            <div class="error-msg" id="commentError">⚠️ A comment is required before the status can be saved.</div>
+                        <div class="photo-section">
+                <div class="photo-section-title">
+                    📷 Attach Photo <span class="photo-optional-tag">Optional</span>
+                </div>
+                <div class="photo-btn-row">
+                    <button class="btn-camera" onclick="triggerPhotoInput()">📷 Take Photo / Choose File</button>
+                    <button class="btn-remove-photo" id="removePhotoBtn" onclick="removePhoto()">✖ Remove</button>
+                </div>
+                <input type="file" id="photoInput" accept="image/*" capture="environment"
+                       onchange="handlePhotoSelected(this)" style="display:none;">
+                <div id="photoPreviewWrap">
+                    <div class="preview-label">Preview</div>
+                    <img id="photoPreview" src="" alt="Preview">
+                </div>
+            </div>
+            <div class="modal-btn-row">
+                <button class="btn-cancel" onclick="cancelStatusChange()">✖ Cancel &amp; Revert</button>
+                <button class="btn-save"   onclick="confirmStatusChange()">💾 Save Status + Comment</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal-overlay" id="historyModal">
+    <div class="modal-box">
+        <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;">
+            <h2 id="historyModalTitle" style="margin:0;">Bay History</h2>
+            <button onclick="closeHistoryModal()"
+                    style="background:none;border:none;color:white;font-size:26px;cursor:pointer;font-weight:700;line-height:1;">
+                ✕
+            </button>
+        </div>
+        <div class="modal-body">
+            <h3>📋 Full Activity Log</h3>
+            <div id="historyLog"></div>
+        </div>
+        <div class="modal-footer">
+            <div style="background:#e8f4fd;border-left:4px solid #00529b;border-radius:6px;
+                        padding:10px 14px;margin-bottom:14px;font-size:13px;
+                        color:#003366;font-weight:600;">
+                📝 Add a new update below — the current status will be kept unchanged.
+            </div>
+            <label class="field-label" for="updateCommentInput">
+                New Comment <span class="required-star">★ Required</span>
+            </label>
+            <textarea id="updateCommentInput"
+                      placeholder="Add new observations, actions taken, or updated condition notes..."></textarea>
+            <div class="error-msg" id="updateCommentError">
+                ⚠️ Please enter a comment before saving.
+            </div>
+                        <div class="photo-section" style="margin-top:12px;">
+                <div class="photo-section-title">
+                    📷 Attach Photo <span class="photo-optional-tag">Optional</span>
+                </div>
+                <div class="photo-btn-row">
+                    <button class="btn-camera" onclick="triggerUpdatePhotoInput()">
+                        📷 Take Photo / Choose File
+                    </button>
+                    <button class="btn-remove-photo" id="removeUpdatePhotoBtn"
+                            onclick="removeUpdatePhoto()">✖ Remove</button>
+                </div>
+                <input type="file" id="updatePhotoInput" accept="image/*"
+                       capture="environment" onchange="handleUpdatePhotoSelected(this)"
+                       style="display:none;">
+                <div id="updatePhotoPreviewWrap" style="display:none;margin-top:10px;">
+                    <div class="preview-label">Preview</div>
+                    <img id="updatePhotoPreview" src="" alt="Preview"
+                         style="max-width:100%;max-height:150px;border-radius:8px;
+                                border:2px solid #00529b;display:block;">
+                </div>
+            </div>
+            <div class="modal-btn-row">
+                <button class="btn-cancel" onclick="closeHistoryModal()">✖ Close</button>
+                <button class="btn-save"   onclick="saveUpdateEntry()">💾 Save Update</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+<!-- REPORT BUILDER MODAL -->
+<div class="modal-overlay" id="reportBuilderModal">
+    <div class="modal-box" style="width:680px;">
+        <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;">
+            <h2 style="margin:0;">📋 Build Detailed Report — PB</h2>
+            <button onclick="closeReportBuilder()"
+                    style="background:none;border:none;color:white;font-size:26px;
+                           cursor:pointer;font-weight:700;line-height:1;">✕</button>
+        </div>
+        <div class="modal-body">
+            <h3>🔍 Filter by Status</h3>
+            <div class="report-filter-grid" id="reportStatusFilter"></div>
+
+            <h3 style="margin-top:16px;">📋 History to Include</h3>
+            <div class="report-radio-group">
+                <label class="report-radio-label">
+                    <input type="radio" name="historyDepth" value="latest" checked>
+                    Most recent entry only per bay
+                </label>
+                <label class="report-radio-label">
+                    <input type="radio" name="historyDepth" value="all">
+                    Full history for each bay
+                </label>
+            </div>
+
+            <h3 style="margin-top:16px;">📷 Photos</h3>
+            <label class="report-toggle-label">
+                <input type="checkbox" id="reportShowPhotos" checked>
+                Include attached photos in report
+            </label>
+
+            <div class="report-sort-notice">
+                📊 Bays will be sorted by severity — S5 (critical) first, down to REP (resolved)
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div class="modal-btn-row">
+                <button class="btn-cancel" onclick="closeReportBuilder()">✖ Cancel</button>
+                <button class="btn-save"   onclick="generateReport()">📋 Generate Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- REPORT VIEW MODAL -->
+<div class="modal-overlay" id="reportViewModal">
+    <div class="modal-box" style="width:820px; max-height:95vh;">
+        <div class="modal-header"
+             style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <h2 style="margin:0;">📋 Detailed Bay Report — Paint Building (PB)</h2>
+                <div style="font-size:11px;opacity:0.75;margin-top:4px;"
+                     id="reportViewSubtitle"></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+                <button onclick="printReport()"
+                        style="background:rgba(255,255,255,0.15);color:white;
+                               border:2px solid rgba(255,255,255,0.4);
+                               padding:8px 16px;border-radius:8px;cursor:pointer;
+                               font-size:12px;font-weight:700;">
+                    🖨️ Print Report
+                </button>
+                <button onclick="closeReportView()"
+                        style="background:none;border:none;color:white;font-size:26px;
+                               cursor:pointer;font-weight:700;line-height:1;">✕</button>
+            </div>
+        </div>
+        <div class="modal-body" id="reportViewBody"></div>
+    </div>
+</div>
+
+<script>
+    // =================================================================
+    // 1. STATUS CONFIGURATION
+    // =================================================================
+    const statuses = [
+        { value:'',    label:'',    cssClass:'',   description:'',                              sub:'' },
+        { value:'S1',  label:'S1',  cssClass:'S1',  description:'Severity 1 — Water in Aisles',  sub:'Water present in general traffic or forklift aisles.' },
+        { value:'S2',  label:'S2',  cssClass:'S2',  description:'Severity 2 — Water on Walkways', sub:'Water present on designated pedestrian walkways. Slip and fall hazard.' },
+        { value:'S3',  label:'S3',  cssClass:'S3',  description:'Severity 3 — Water on Equipment', sub:'Water contacting production machinery or facility equipment.' },
+        { value:'S4',  label:'S4',  cssClass:'S4',  description:'Severity 4 — Water on Control Panels', sub:'Water reaching electrical control panels or operator interfaces.' },
+        { value:'S5',  label:'S5',  cssClass:'S5',  description:'Severity 5 — ⚡ Critical Electrical / Injury Hazard', sub:'Water on electrical panels, bus bars, or exposed wiring.' },
+        { value:'ACT', label:'ACT', cssClass:'ACT', description:'Active Leak — Unrated',             sub:'Leak confirmed and actively dripping.' },
+        { value:'DRN', label:'DRN', cssClass:'DRN', description:'Repaired Drain',                    sub:'Drain issue identified and repaired.' },
+        { value:'L+D', label:'L+D', cssClass:'LD',  description:'Active Leak + Active Drain Issue',  sub:'Both an active roof leak and a drain blockage are present.' },
+        { value:'R+D', label:'R+D', cssClass:'RD',  description:'Repair in Progress + Active Drain', sub:'Leak repair is underway but the drain issue remains active.' },
+        { value:'A+D', label:'A+D', cssClass:'AD',  description:'Temporary Action Taken + Active Drain', sub:'Temporary fix applied to the leak. Drain still active.' },
+        { value:'REP', label:'REP', cssClass:'REP', description:'Repaired — Leak Resolved',          sub:'Roof leak has been fully repaired and signed off.' }
+    ];
+
+    function getStatusInfo(val) {
+        return statuses.find(s => s.value === val) || statuses[0];
+    }
+
+    // 📐 FIXED DIMENSIONS: ROWS A-K, COLS 1-36 (No leading zeros)
+    const customRows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
+    
+    // 🌟 Set to exactly 36 columns
+    const MAX_COLUMNS = 36; 
+    const customCols = [];
+    for (let i = 1; i <= MAX_COLUMNS; i++) {
+        customCols.push(i.toString());
+    }
+
+    const preloadData = [];
+
+    // =================================================================
+    // 2. BUILD THE GRID
+    // =================================================================
+    const grid = document.getElementById('mainGrid');
+    let headerRow = '<tr><th>⬛</th>';
+    customCols.forEach(c => { headerRow += `<th>${c}</th>`; });
+    headerRow += '</tr>';
+    grid.innerHTML = headerRow;
+
+    customRows.forEach(rowLabel => {
+        let rowHTML = `<tr><td class="row-label">${rowLabel}</td>`;
+        customCols.forEach(colLabel => {
+            const bayKey = `${rowLabel}-${colLabel}`;
+            let sel = `<select onchange="onStatusChange(this,'${bayKey}')"
+                               data-key="${bayKey}" data-previous="">`;
+            statuses.forEach(s => {
+                sel += s.value === ''
+                    ? `<option value=""> </option>`
+                    : `<option value="${s.value}">${s.label}</option>`;
+            });
+            sel += '</select>';
+            rowHTML += `<td class="status-"
+                           data-key="${bayKey}"
+                           ondblclick="openHistoryModal('${bayKey}')">${sel}</td>`;
+        });
+        rowHTML += '</tr>';
+        grid.innerHTML += rowHTML;
+    });
+
+    // =================================================================
+    // 🌟 TOGGLE REP BAYS VISIBILITY
+    // =================================================================
+    function toggleRepBays() {
+        const gridTable = document.getElementById('mainGrid');
+        const btn = document.getElementById('toggleRepBtn');
+        const isHidden = gridTable.classList.toggle('hide-rep');
+        
+               if (isHidden) {
+            btn.innerHTML = '👁️ Show Repaired (REP)';
+            btn.style.background = '#2e7d32';
+            btn.style.borderColor = '#1b5e20';
+            btn.onmouseover = () => btn.style.background = '#1b5e20';
+            btn.onmouseout  = () => btn.style.background = '#2e7d32';
+        } else {
+            btn.innerHTML = '👁️ Hide Repaired (REP)';
+            btn.style.background = '#37474f';
+            btn.style.borderColor = '#263238';
+            btn.onmouseover = () => btn.style.background = '#263238';
+            btn.onmouseout  = () => btn.style.background = '#37474f';
+        }
+
+    }
+
+    // =================================================================
+    // 3. STATUS CHANGE ENGINE
+    // =================================================================
+    let pendingBayKey         = null;
+    let pendingNewStatus      = null;
+    let pendingPreviousStatus = null;
+    let pendingPhotoBase64    = null;
+    let pendingUpdatePhoto    = null;
+
+
+    function onStatusChange(dropdown, bayKey) {
+        if (dropdown.value === '') {
+            if (confirm(`⚠️ Do you want to completely clear all history, notes, and colors for Bay ${bayKey}?`)) {
+                localStorage.removeItem(`roofgrid_pb_${bayKey}`);
+                dropdown.parentElement.className = 'status-';
+                dropdown.parentElement.classList.remove('has-comments');
+                dropdown.setAttribute('data-previous', '');
+            } else {
+                dropdown.value = dropdown.getAttribute('data-previous') || '';
+            }
+            recalculateTotals();
+            return;
+        }
+        pendingBayKey         = bayKey;
+        pendingNewStatus      = dropdown.value;
+        pendingPreviousStatus = dropdown.getAttribute('data-previous') || '';
+        openCommentModal(bayKey, pendingNewStatus);
+    }
+
+       function openCommentModal(bayKey, statusValue) {
+        const s = getStatusInfo(statusValue);
+        document.getElementById('commentModalTitle').innerText = `📍 Bay: ${bayKey}`;
+        document.getElementById('modalStatusCode').innerText   = s.label;
+        document.getElementById('modalStatusDesc').innerText   = s.description;
+        document.getElementById('modalStatusSub').innerText    = s.sub;
+        document.getElementById('commentInput').value          = '';
+        document.getElementById('commentInput').classList.remove('error');
+        document.getElementById('commentError').classList.remove('visible');
+        removePhoto();
+        renderHistoryIntoElement('commentModalHistory', bayKey);
+
+        document.getElementById('commentModal').classList.add('active');
+        setTimeout(() => document.getElementById('commentInput').focus(), 120);
+    }
+
+
+    function confirmStatusChange() {
+        const text = document.getElementById('commentInput').value.trim();
+        if (!text) {
+            document.getElementById('commentInput').classList.add('error');
+            document.getElementById('commentError').classList.add('visible');
+            document.getElementById('commentInput').focus();
+            return;
+        }
+        const s        = getStatusInfo(pendingNewStatus);
+        const dropdown = document.querySelector(`select[data-key="${pendingBayKey}"]`);
+        dropdown.parentElement.className = `status-${s.cssClass}`;
+        dropdown.setAttribute('data-previous', pendingNewStatus);
+        addHistoryEntry(pendingBayKey, pendingNewStatus, text, pendingPhotoBase64, false);
+        markCellHasComments(pendingBayKey);
+        recalculateTotals();
+        document.getElementById('commentModal').classList.remove('active');
+        pendingBayKey = pendingNewStatus = pendingPreviousStatus = pendingPhotoBase64 = null;
+
+    }
+
+    function cancelStatusChange() {
+        const dropdown = document.querySelector(`select[data-key="${pendingBayKey}"]`);
+        if (dropdown) dropdown.value = pendingPreviousStatus || '';
+        document.getElementById('commentModal').classList.remove('active');
+        pendingBayKey = pendingNewStatus = pendingPreviousStatus = null;
+    }
+
+    // =================================================================
+    // 4. HISTORY MODAL & LOCAL STORAGE (PB Specific Namespace)
+    // =================================================================
+    let activeHistoryBayKey = null;
+
+    function getHistory(bayKey) {
+        const stored = localStorage.getItem(`roofgrid_pb_${bayKey}`);
+        return stored ? JSON.parse(stored) : [];
+    }
+
+    function addHistoryEntry(bayKey, status, comment, photo, imported) {
+        const history = getHistory(bayKey);
+        const now     = new Date();
+        const timestamp = now.toLocaleDateString('en-US', {
+            year:'numeric', month:'short', day:'numeric',
+            hour:'2-digit', minute:'2-digit', second:'2-digit'
+        });
+        history.push({ timestamp, status, comment, photo: photo || null, imported: !!imported });
+        localStorage.setItem(`roofgrid_pb_${bayKey}`, JSON.stringify(history));
+    }
+    // =================================================================
+    // PHOTO ENGINE
+    // =================================================================
+    function triggerPhotoInput() { document.getElementById('photoInput').click(); }
+
+    function handlePhotoSelected(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_W  = 900;
+                const scale  = img.width > MAX_W ? MAX_W / img.width : 1;
+                canvas.width  = img.width  * scale;
+                canvas.height = img.height * scale;
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                pendingPhotoBase64 = canvas.toDataURL('image/jpeg', 0.72);
+                document.getElementById('photoPreview').src               = pendingPhotoBase64;
+                document.getElementById('photoPreviewWrap').style.display = 'block';
+                document.getElementById('removePhotoBtn').style.display   = 'inline-flex';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function removePhoto() {
+        pendingPhotoBase64 = null;
+        document.getElementById('photoInput').value               = '';
+        document.getElementById('photoPreview').src               = '';
+        document.getElementById('photoPreviewWrap').style.display = 'none';
+        document.getElementById('removePhotoBtn').style.display   = 'none';
+    }
+
+    function triggerUpdatePhotoInput() {
+        document.getElementById('updatePhotoInput').click();
+    }
+
+    function handleUpdatePhotoSelected(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_W  = 900;
+                const scale  = img.width > MAX_W ? MAX_W / img.width : 1;
+                canvas.width  = img.width  * scale;
+                canvas.height = img.height * scale;
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                pendingUpdatePhoto = canvas.toDataURL('image/jpeg', 0.72);
+                document.getElementById('updatePhotoPreview').src               = pendingUpdatePhoto;
+                document.getElementById('updatePhotoPreviewWrap').style.display = 'block';
+                document.getElementById('removeUpdatePhotoBtn').style.display   = 'inline-flex';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function removeUpdatePhoto() {
+        pendingUpdatePhoto = null;
+        document.getElementById('updatePhotoInput').value                   = '';
+        document.getElementById('updatePhotoPreview').src                   = '';
+        document.getElementById('updatePhotoPreviewWrap').style.display     = 'none';
+        document.getElementById('removeUpdatePhotoBtn').style.display       = 'none';
+    }
+
+       function openHistoryModal(bayKey) {
+        activeHistoryBayKey = bayKey;
+        document.getElementById('historyModalTitle').innerText = `📍 Bay: ${bayKey} — PB History`;
+        renderHistoryIntoElement('historyLog', bayKey);
+        document.getElementById('updateCommentInput').value = '';
+        document.getElementById('updateCommentInput').classList.remove('error');
+        document.getElementById('updateCommentError').classList.remove('visible');
+        removeUpdatePhoto();
+        document.getElementById('historyModal').classList.add('active');
+    }
+
+
+    function closeHistoryModal() {
+        document.getElementById('historyModal').classList.remove('active');
+        activeHistoryBayKey = null;
+    }
+
+        function saveUpdateEntry() {
+        const text = document.getElementById('updateCommentInput').value.trim();
+        if (!text) {
+            document.getElementById('updateCommentInput').classList.add('error');
+            document.getElementById('updateCommentError').classList.add('visible');
+            document.getElementById('updateCommentInput').focus();
+            return;
+        }
+        const dropdown = document.querySelector(`select[data-key="${activeHistoryBayKey}"]`);
+        const currentStatus = dropdown ? dropdown.value : '';
+        addHistoryEntry(activeHistoryBayKey, currentStatus, text, pendingUpdatePhoto, false);
+
+        markCellHasComments(activeHistoryBayKey);
+        renderHistoryIntoElement('historyLog', activeHistoryBayKey);
+        document.getElementById('updateCommentInput').value = '';
+        document.getElementById('updateCommentInput').classList.remove('error');
+        document.getElementById('updateCommentError').classList.remove('visible');
+        document.getElementById('updateCommentInput').placeholder =
+            '✅ Update saved! Add another note if needed...';
+        setTimeout(() => {
+	removeUpdatePhoto();
+            document.getElementById('updateCommentInput').placeholder =
+                'Add new observations, actions taken, or updated condition notes...';
+        }, 3000);
+    }
+
+
+       function renderHistoryIntoElement(elementId, bayKey) {
+        const container = document.getElementById(elementId);
+        const history   = getHistory(bayKey);
+
+        if (history.length === 0) {
+            container.innerHTML = `<div class="no-history">No history yet for this bay.<br>Select a status and add a comment to begin logging.</div>`;
+            return;
+        }
+
+        container.innerHTML = [...history].reverse().map(entry => {
+            const s         = getStatusInfo(entry.status);
+            const importTag = entry.imported
+                ? '<span class="he-imported-tag">📁 Imported from tracking log</span><br>' : '';
+            const photoHTML = entry.photo
+                ? `<div class="history-photo-wrap">
+                       <div class="history-photo-label">📷 Attached Photo</div>
+                       <img class="history-photo-thumb" src="${entry.photo}" alt="Attached photo" title="Click to view full size">
+                   </div>` : '';
+            return `
+                <div class="history-entry ${entry.imported ? 'imported' : ''}">
+                    <div class="he-timestamp">🕐 ${entry.timestamp}</div>
+                    ${importTag}
+                    <div class="he-status">🔄 ${s.label}</div>
+                    <div class="he-desc">${s.description}</div>
+                    <div class="he-sub">${s.sub}</div>
+                    <div class="he-clabel">💬 Details</div>
+                    <div class="he-comment">${entry.comment}</div>
+                    ${photoHTML}
+                </div>`;
+        }).join('');
+    }
+
+    // Click any history photo thumb to open full size viewer
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('history-photo-thumb')) viewImage(e.target.src);
+    });
+
+    // =================================================================
+    // IMAGE VIEWER
+    // =================================================================
+    function viewImage(src) {
+        document.getElementById('viewerImg').src = src;
+        document.getElementById('imageViewer').classList.add('active');
+    }
+    function closeImageViewer() {
+        document.getElementById('imageViewer').classList.remove('active');
+    }
+    document.getElementById('closeViewerBtn').addEventListener('click', closeImageViewer);
+    document.getElementById('viewerImg').addEventListener('click', closeImageViewer);
+
+    function markCellHasComments(bayKey) {
+        document.querySelectorAll(`td[data-key="${bayKey}"]`)
+                .forEach(c => c.classList.add('has-comments'));
+    }
+
+
+    function restoreAllStatuses() {
+        customRows.forEach(r => {
+            customCols.forEach(c => {
+                const bayKey = `${r}-${c}`;
+                const history = getHistory(bayKey);
+                if (history.length === 0) return;
+                const lastStatus = history[history.length - 1].status;
+                const s          = getStatusInfo(lastStatus);
+                if (!s.value) return;
+                const dropdown = document.querySelector(`select[data-key="${bayKey}"]`);
+                if (!dropdown) return;
+                dropdown.value = lastStatus;
+                dropdown.setAttribute('data-previous', lastStatus);
+                dropdown.parentElement.className = `status-${s.cssClass}`;
+                markCellHasComments(bayKey);
+            });
+        });
+    }
+
+    function resetEntireGrid() {
+        if (confirm("🚨 WARNING: This will permanently delete ALL updates, notes, and history for the Paint Building grid. Are you sure?")) {
+            customRows.forEach(r => {
+                customCols.forEach(c => {
+                    localStorage.removeItem(`roofgrid_pb_${r}-${c}`);
+                });
+            });
+            location.reload();
+        }
+    }
+
+
+    // =================================================================
+    // 5. SPREADSHEET IMPORT ENGINE (CSV - PB Filtered)
+    // =================================================================
+    function triggerCSVInput() { document.getElementById('csvFileInput').click(); }
+
+    function handleCSVUpload(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => processCSVData(e.target.result);
+        reader.readAsText(file);
+        input.value = '';
+    }
+
+    function parseCSV(text) {
+        let lines = []; let row = [""]; let inQuotes = false;
+        for (let i = 0; i < text.length; i++) {
+            let c = text[i]; let next = text[i+1];
+            if (c === '"') {
+                if (inQuotes && next === '"') { row[row.length - 1] += '"'; i++; }
+                else { inQuotes = !inQuotes; }
+            } else if (c === ',' && !inQuotes) { row.push(''); }
+            else if ((c === '\r' || c === '\n') && !inQuotes) {
+                if (c === '\r' && next === '\n') { i++; }
+                lines.push(row); row = [''];
+            } else { row[row.length - 1] += c; }
+        }
+        if (row.length > 1 || row[0] !== '') { lines.push(row); }
+        return lines;
+    }
+
+    function processCSVData(csvText) {
+        const lines = parseCSV(csvText);
+        if (lines.length < 2) return;
+
+        const headers = lines[0].map(h => h.trim().toLowerCase());
+        const bayIdx = headers.findIndex(h => h.includes('area') || h.includes('bay'));
+        const callInIdx = headers.findIndex(h => h.includes('call in') || h.includes('call-in'));
+        const sevIdx = headers.findIndex(h => h.includes('severity'));
+        const repairIdx = headers.findIndex(h => h.includes('repair'));
+        const contractorIdx = headers.findIndex(h => h.includes('contractor') || h.includes('roofing'));
+        const notesIdx = headers.findIndex(h => h.includes('jb notes') || h.includes('notes'));
+
+        if (bayIdx === -1) { alert("Error: AREA column not found."); return; }
+
+        let importCount = 0;
+
+        // 🌟 SMART PARSER: Automatically strips leading zeros (e.g., K04 -> K-4, A11 -> A-11)
+        function getBayKeysFromArea(area) {
+            area = area.toUpperCase().trim();
+            let cleaned = area.replace(/\s*\(.*$/, "").trim();
+            let keys = [];
+            
+            const singleMatch = cleaned.match(/^([A-Z\/\-]+)(\d+)$/);
+            if (singleMatch) {
+                const colNum = parseInt(singleMatch[2], 10);
+                keys.push(`${singleMatch[1]}-${colNum}`);
+                return keys;
+            }
+            
+            const rangeMatch = cleaned.match(/^([A-Z\/\-]+)(\d+)-(\d+)$/);
+            if (rangeMatch) {
+                const prefix = rangeMatch[1];
+                const start = parseInt(rangeMatch[2], 10);
+                const end = parseInt(rangeMatch[3], 10);
+                for (let n = Math.min(start,end); n <= Math.max(start,end); n++) {
+                    keys.push(`${prefix}-${n}`);
+                }
+                return keys;
+            }
+            if (cleaned) keys.push(cleaned);
+            return keys;
+        }
+
+        for (let i = 1; i < lines.length; i++) {
+            const row = lines[i];
+            if (row.length <= bayIdx || !row[bayIdx].trim()) continue;
+
+            const rawArea = row[bayIdx].trim();
+
+            // 🌟 SMART STANDALONE PB FILTER 🌟
+            const isPB = rawArea.toUpperCase().includes('(PB)');
+            const hasOtherBuilding = rawArea.toUpperCase().includes('(MB)') || 
+                                     rawArea.toUpperCase().includes('(B2)') || 
+                                     rawArea.toUpperCase().includes('(MC)') || 
+                                     rawArea.toUpperCase().includes('(PH)');
+            
+            if (hasOtherBuilding && !isPB) {
+                continue; 
+            }
+
+            const callInDate = callInIdx !== -1 ? row[callInIdx].trim() : '';
+            let rawSeverity = sevIdx !== -1 ? row[sevIdx].trim().toUpperCase().replace(/\s+/g, '') : '';
+            const repairDate = repairIdx !== -1 ? row[repairIdx].trim() : '';
+            const contractor = contractorIdx !== -1 ? row[contractorIdx].trim() : '';
+            const jbNotes = notesIdx !== -1 ? row[notesIdx].trim() : '';
+
+            if (rawSeverity) {
+                const numMatch = rawSeverity.match(/[1-5]/);
+                if (numMatch) rawSeverity = 'S' + numMatch[0];
+            }
+
+            let currentStatus = repairDate ? 'REP' : (rawSeverity || 'ACT');
+            const targetBayKeys = getBayKeysFromArea(rawArea);
+
+            targetBayKeys.forEach(bayKey => {
+                const selectEl = document.querySelector(`#mainGrid select[data-key="${bayKey}"]`);
+                if (selectEl) {
+                    selectEl.value = currentStatus;
+                    selectEl.setAttribute('data-previous', currentStatus);
+                    selectEl.parentElement.className = `status-${getStatusInfo(currentStatus).cssClass}`;
+                    markCellHasComments(bayKey);
+
+                    let noteParts = [];
+                    if (contractor) noteParts.push(`Contractor: ${contractor}`);
+                    if (jbNotes) noteParts.push(jbNotes);
+                    const compiledNotes = noteParts.join(' | ') || 'Imported from PB tracking log.';
+
+                    const timestamp = callInDate || new Date().toLocaleDateString();
+                    const history = getHistory(bayKey);
+                    const isDuplicate = history.some(h => h.timestamp.startsWith(timestamp) && h.status === currentStatus);
+
+                    if (!isDuplicate) {
+                        history.push({ timestamp, status: currentStatus, comment: compiledNotes, imported: true });
+                        localStorage.setItem(`roofgrid_pb_${bayKey}`, JSON.stringify(history));
+                    }
+                    importCount++;
+                }
+            });
+        }
+
+        // 🌟 FIXED: Instantly updates the Status Summary counts
+        recalculateTotals();
+
+        const toast = document.getElementById('importToast');
+        const toastMsg = document.getElementById('importToastMsg');
+        if (toast && toastMsg) {
+            toastMsg.innerText = `Successfully populated ${importCount} Paint Building (PB) bays!`;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 5000);
+        }
+    }
+
+    // =================================================================
+    // 6. EXPORT ENGINE
+    // =================================================================
+    function exportUpdatedHTML() {
+        // 1. Gather all current statuses and persistent history from localStorage
+        const updatedData = [];
+        const selects = document.querySelectorAll('#mainGrid select');
+        
+        selects.forEach(select => {
+            const bayKey = select.getAttribute('data-key');
+            const currentStatus = select.value;
+            
+            if (currentStatus !== '') {
+                // Read directly from the persistent localStorage engine
+                const historyLog = getHistory(bayKey);
+
+                updatedData.push({
+                    bayKeys: [bayKey],
+                    currentStatus: currentStatus,
+                    history: historyLog,
+                    callInDate: historyLog.length > 0 ? historyLog[0].timestamp.split(',')[0] : new Date().toLocaleDateString(),
+                    severity: currentStatus.startsWith('S') ? currentStatus : null,
+                    repairDate: currentStatus === 'REP' ? new Date().toLocaleDateString() : null,
+                    contractor: null,
+                    notes: historyLog.length > 0 ? historyLog[historyLog.length - 1].comment : ''
+                });
+            }
+        });
+
+        // 2. Get the raw HTML of the current document
+        let htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+
+        // 3. Locate the 'preloadData' array in the source code
+        const dataRegex = /const preloadData\s*=\s*\[[\s\S]*?\];/;
+        const updatedDataString = `const preloadData = ${JSON.stringify(updatedData, null, 4)};`;
+
+        if (htmlContent.match(dataRegex)) {
+            htmlContent = htmlContent.replace(dataRegex, updatedDataString);
+        } else {
+            alert("Error: Could not locate the 'preloadData' array to save changes.");
+            return;
+        }
+
+        // 4. Clean up active visual states, hidden elements, and open modals so the export loads clean
+        htmlContent = htmlContent.replace(/class="modal-overlay active"/g, 'class="modal-overlay"');
+        htmlContent = htmlContent.replace(/id="reportModal" class="active"/g, 'id="reportModal"');
+        htmlContent = htmlContent.replace(/class="toast" style="display:\s*block;"/g, 'class="toast"');
+        
+        // Ensure the grid doesn't export in a permanently "hidden" state
+        htmlContent = htmlContent.replace(/id="mainGrid" class="hide-rep"/g, 'id="mainGrid"');
+
+        // 5. Generate the download file
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const link = document.createElement('a');
+        const dateStr = new Date().toISOString().slice(0,10);
+        link.download = `Roof_Condition_Grid_PB_Updated_${dateStr}.html`;
+        link.href = URL.createObjectURL(blob);
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+        // =================================================================
+    // DETAILED REPORT ENGINE — Builder Pattern
+    // =================================================================
+
+    function openReportBuilder() {
+        const chipContainer = document.getElementById('reportStatusFilter');
+        chipContainer.innerHTML = '';
+        statuses.filter(s => s.value !== '').forEach(s => {
+            const bg    = getStatusBg(s.value);
+            const color = getStatusColor(s.value);
+            const chip  = document.createElement('label');
+            chip.className = 'report-filter-chip selected';
+            chip.style.background = bg;
+            chip.style.color = color;
+            chip.innerHTML = `<input type="checkbox" value="${s.value}" checked> ${s.label}`;
+            chip.querySelector('input').addEventListener('change', () => {
+                chip.classList.toggle('selected', chip.querySelector('input').checked);
+            });
+            chipContainer.appendChild(chip);
+        });
+        document.getElementById('reportBuilderModal').classList.add('active');
+    }
+
+    function closeReportBuilder() {
+        document.getElementById('reportBuilderModal').classList.remove('active');
+    }
+
+    function generateReport() {
+        const selectedStatuses = [...document.querySelectorAll('#reportStatusFilter input:checked')]
+            .map(cb => cb.value);
+
+        if (selectedStatuses.length === 0) {
+            alert('⚠️ Please select at least one status to include in the report.');
+            return;
+        }
+
+        const historyDepth = document.querySelector('input[name="historyDepth"]:checked').value;
+        const showPhotos   = document.getElementById('reportShowPhotos').checked;
+
+        const severityOrder = ['S5','S4','S3','S2','S1','ACT','L+D','R+D','A+D','DRN','REP'];
+        const allBays = [];
+
+        customRows.forEach(r => {
+            customCols.forEach(c => {
+                const bayKey  = `${r}-${c}`;
+                const history = getHistory(bayKey);
+                if (history.length === 0) return;
+                const lastStatus = history[history.length - 1].status;
+                if (!selectedStatuses.includes(lastStatus)) return;
+                allBays.push({ bayKey, history, lastStatus });
+            });
+        });
+
+        allBays.sort((a, b) => {
+            const ai = severityOrder.indexOf(a.lastStatus);
+            const bi = severityOrder.indexOf(b.lastStatus);
+            return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        });
+
+        buildReportView(allBays, historyDepth, showPhotos);
+        closeReportBuilder();
+    }
+
+    function buildReportView(allBays, historyDepth, showPhotos) {
+        const body     = document.getElementById('reportViewBody');
+        const subtitle = document.getElementById('reportViewSubtitle');
+
+        subtitle.textContent =
+            `Paint Building (PB) — ${allBays.length} bays — Generated: ${new Date().toLocaleString()}`;
+
+        if (allBays.length === 0) {
+            body.innerHTML = `<div class="report-no-results">
+                No bays found matching the selected filters.<br>
+                Try selecting additional statuses in the builder.
+            </div>`;
+            document.getElementById('reportViewModal').classList.add('active');
+            return;
+        }
+
+        // Group by status
+        const groups = {};
+        allBays.forEach(b => {
+            if (!groups[b.lastStatus]) groups[b.lastStatus] = [];
+            groups[b.lastStatus].push(b);
+        });
+
+        let html = '';
+        Object.keys(groups).forEach(status => {
+            const s     = getStatusInfo(status);
+            const bg    = getStatusBg(status);
+            const color = getStatusColor(status);
+
+            html += `
+                <div class="report-section-divider">
+                    ${getSeverityIcon(status)} ${s.label} — ${s.description}
+                    <span style="margin-left:auto;font-size:12px;opacity:0.8;">
+                        ${groups[status].length} bay${groups[status].length !== 1 ? 's' : ''}
+                    </span>
+                </div>`;
+
+            groups[status].forEach(b => {
+                const entriesToShow = historyDepth === 'latest'
+                    ? [b.history[b.history.length - 1]]
+                    : [...b.history].reverse();
+
+                html += `
+                    <div class="report-bay-card">
+                        <div class="report-bay-header">
+                            <span class="report-bay-id">📍 Bay ${b.bayKey}</span>
+                            <span class="report-bay-status-badge"
+                                  style="background:${bg};color:${color};">
+                                ${s.label}
+                            </span>
+                            <span style="font-size:11px;color:#aaa;margin-left:auto;">
+                                ${b.history.length} log ${b.history.length !== 1 ? 'entries' : 'entry'}
+                            </span>
+                        </div>
+                        <div class="report-bay-body">
+                            ${entriesToShow.map(entry => {
+                                const es        = getStatusInfo(entry.status);
+                                const importTag = entry.imported
+                                    ? `<span class="he-imported-tag">📁 Imported</span>` : '';
+                                const photoHTML = (showPhotos && entry.photo)
+                                    ? `<img class="report-entry-photo" src="${entry.photo}"
+                                             alt="Attached photo" title="Click to enlarge">` : '';
+                                return `
+                                    <div class="report-entry ${entry.imported ? 'imported' : ''}">
+                                        <div class="report-entry-timestamp">
+                                            🕐 ${entry.timestamp} ${importTag}
+                                        </div>
+                                        <div class="report-entry-status">
+                                            🔄 ${es.label} — ${es.description}
+                                        </div>
+                                        <div class="report-entry-comment">${entry.comment}</div>
+                                        ${photoHTML}
+                                    </div>`;
+                            }).join('')}
+                        </div>
+                    </div>`;
+            });
+        });
+
+        body.innerHTML = html;
+
+        // Wire photo zoom
+        body.querySelectorAll('.report-entry-photo').forEach(img => {
+            img.addEventListener('click', () => viewImage(img.src));
+        });
+
+        document.getElementById('reportViewModal').classList.add('active');
+    }
+
+    function closeReportView() {
+        document.getElementById('reportViewModal').classList.remove('active');
+    }
+
+    function printReport() {
+        const reportContent = document.getElementById('reportViewBody').innerHTML;
+        const subtitle      = document.getElementById('reportViewSubtitle').textContent;
+        const printWin      = window.open('', '_blank', 'width=900,height=700');
+        printWin.document.write(`<!DOCTYPE html>
+<html>
+<head>
+    <title>Detailed Bay Report — Paint Building (PB)</title>
+    <style>
+        body { font-family:'Segoe UI',sans-serif; padding:24px; background:white; }
+        h1   { font-size:18px; color:#00529b; margin-bottom:4px; }
+        .sub { font-size:11px; color:#888; margin-bottom:20px; }
+        .report-section-divider {
+            background:#2d4a6e; color:white; padding:8px 12px; border-radius:6px;
+            font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px;
+            margin:18px 0 10px; display:flex; align-items:center; gap:8px;
+            -webkit-print-color-adjust:exact; print-color-adjust:exact;
+        }
+        .report-bay-card {
+            border:1px solid #dde3ec; border-radius:8px;
+            margin-bottom:12px; overflow:hidden; page-break-inside:avoid;
+        }
+        .report-bay-header {
+            display:flex; align-items:center; gap:10px; padding:8px 12px;
+            background:#f8fafc; border-bottom:1px solid #e3e8ef; flex-wrap:wrap;
+            -webkit-print-color-adjust:exact; print-color-adjust:exact;
+        }
+        .report-bay-id { font-size:14px; font-weight:800; color:#1e3552; }
+        .report-bay-status-badge {
+            font-size:10px; font-weight:800; padding:3px 10px; border-radius:12px;
+            -webkit-print-color-adjust:exact; print-color-adjust:exact;
+        }
+        .report-bay-body { padding:10px 12px; }
+        .report-entry {
+            border-left:3px solid #00529b; padding:8px 10px; margin-bottom:8px;
+            background:#f5f7fa; border-radius:0 6px 6px 0;
+            -webkit-print-color-adjust:exact; print-color-adjust:exact;
+        }
+        .report-entry.imported { border-left-color:#78909c; }
+        .report-entry-timestamp { font-size:10px; color:#999; margin-bottom:4px; }
+        .report-entry-status { font-size:11px; font-weight:800; color:#00529b; margin-bottom:3px; }
+        .report-entry-comment { font-size:11px; color:#333; white-space:pre-wrap; line-height:1.5; }
+        .report-entry-photo {
+            max-width:100%; max-height:180px; border-radius:6px; margin-top:8px; display:block;
+        }
+        .he-imported-tag {
+            display:inline-block; font-size:9px; background:#eceff1;
+            color:#546e7a; border-radius:6px; padding:1px 6px; font-weight:600;
+        }
+        @page { size:portrait; margin:0.5in; }
+    </style>
+</head>
+<body>
+    <h1>📋 Detailed Bay Report — Paint Building (PB)</h1>
+    <div class="sub">${subtitle}</div>
+    ${reportContent}
+</body>
+</html>`);
+        printWin.document.close();
+        printWin.focus();
+        setTimeout(() => printWin.print(), 500);
+    }
+
+    function getSeverityIcon(val) {
+        const icons = {
+            'S5':'⚡','S4':'🔴','S3':'🟠','S2':'🟡','S1':'🔵',
+            'ACT':'💧','L+D':'🔗','R+D':'🔧','A+D':'⚠️','DRN':'🚰','REP':'✅'
+        };
+        return icons[val] || '📍';
+    }
+
+    function getStatusBg(val) {
+        const map = {
+            'S1':'#EBF5FF','S2':'#BDD7EE','S3':'#FFF2CC','S4':'#FFEB9C',
+            'S5':'#FFC7CE','ACT':'#C6EFCE','DRN':'#FCE4D6','L+D':'#EDEDED',
+            'R+D':'#D0CECE','A+D':'#AEAAAA','REP':'#E2EFDA'
+        };
+        return map[val] || '#ffffff';
+    }
+
+    function getStatusColor(val) {
+        const map = {
+            'S1':'#003366','S2':'#003366','S3':'#7d6000','S4':'#9C5700',
+            'S5':'#9C0006','ACT':'#006100','DRN':'#C65911','L+D':'#444',
+            'R+D':'#333','A+D':'#fff','REP':'#375623'
+        };
+        return map[val] || '#333';
+    }
+
+
+    function openPrintView() {
+        window.print();
+    }
+
+    // =================================================================
+    // DYNAMIC SUMMARY GENERATION & COUNT ENGINE
+    // =================================================================
+    function buildSummaryTable() {
+        const summaryBody = document.getElementById('summaryBody');
+        summaryBody.innerHTML = '';
+        
+        function addDivider(label) {
+            summaryBody.innerHTML += `<tr class="summary-divider"><td colspan="3">${label}</td></tr>`;
+        }
+        
+        function addSummaryRow(s) {
+            summaryBody.innerHTML += `
+                <tr>
+                    <td class="code-cell status-${s.cssClass}">${s.label}</td>
+                    <td class="desc-cell">${s.description}<span class="desc-sub">${s.sub}</span></td>
+                    <td class="count-cell" id="count-${s.cssClass}">0</td>
+                </tr>`;
+        }
+
+        addDivider('📊 Severity Levels — Lowest to Critical');
+        statuses.filter(s => ['S1','S2','S3','S4','S5'].includes(s.value)).forEach(addSummaryRow);
+        
+        addDivider('🔧 Active & Drain Statuses');
+        statuses.filter(s => ['ACT','DRN','L+D','R+D','A+D'].includes(s.value)).forEach(addSummaryRow);
+        
+        addDivider('✅ Resolved');
+        statuses.filter(s => s.value === 'REP').forEach(addSummaryRow);
+    }
+
+    function recalculateTotals() {
+        const counts = {};
+        statuses.forEach(s => { if (s.value) counts[s.cssClass] = 0; });
+        let grandTotal = 0;
+
+        // Query select values directly (100% reliable in all browsers)
+        const selects = document.querySelectorAll('#mainGrid select');
+        selects.forEach(select => {
+            const val = select.value;
+            if (val) {
+                const s = getStatusInfo(val);
+                if (counts[s.cssClass] !== undefined) {
+                    counts[s.cssClass]++;
+                    grandTotal++;
+                }
+            }
+        });
+
+        // Update UI counts on the screen
+        statuses.forEach(s => {
+            const el = document.getElementById(`count-${s.cssClass}`);
+            if (el) el.innerText = counts[s.cssClass];
+        });
+        document.getElementById('grandTotal').innerText = grandTotal;
+    }
+
+    // =================================================================
+    // COLLAPSIBLE SUMMARY TOGGLE
+    // =================================================================
+    function toggleSummary() {
+        const panel = document.getElementById('summaryPanel');
+        const btn = document.getElementById('toggleSummaryBtn');
+        panel.classList.toggle('collapsed');
+        if (panel.classList.contains('collapsed')) {
+            btn.innerText = '▶';
+            btn.title = 'Expand Summary';
+        } else {
+            btn.innerText = '◀';
+            btn.title = 'Collapse Summary';
+        }
+    }
+    // =================================================================
+    // HOVER TOOLTIP EVENT LISTENERS
+    // =================================================================
+    const tooltip = document.getElementById('customTooltip');
+
+       document.getElementById('mainGrid').addEventListener('mouseover', e => {
+        const td = e.target.closest('td[data-key]');
+        if (!td) { tooltip.style.display = 'none'; return; }
+
+        const bayKey = td.getAttribute('data-key');
+        const select = td.querySelector('select');
+        const currentStatus = select ? select.value : '';
+        const history = getHistory(bayKey);
+        const s = getStatusInfo(currentStatus);
+
+        // 🌟 FIXED: ALWAYS show tooltip — even for empty cells
+        let html = `<strong>📍 Bay ${bayKey}</strong><br>`;
+
+        if (currentStatus) {
+            html += `<strong>Status:</strong> ${s.label}`;
+            if (s.description) html += ` — ${s.description}`;
+            html += '<br>';
+        } else {
+            html += `<span style="color:#aaa;font-style:italic;">No status assigned.</span><br>`;
+        }
+
+        if (history.length > 0) {
+            const last = history[history.length - 1];
+            html += `<strong>Latest Note:</strong> ${last.comment}<br>`;
+            html += `<small style="color:#aaa;font-style:italic;">🕐 ${last.timestamp}</small>`;
+        } else {
+            html += `<small style="color:#aaa;font-style:italic;">No notes logged yet.</small>`;
+        }
+
+        tooltip.innerHTML = html;
+               tooltip.style.display = 'block';
+    });
+
+    	    document.getElementById('mainGrid').addEventListener('mousemove', e => {
+        tooltip.style.left = (e.pageX + 14) + 'px';
+        tooltip.style.top  = (e.pageY - tooltip.offsetHeight - 10) + 'px';
+    });
+
+    document.getElementById('mainGrid').addEventListener('mouseout', () => {
+        tooltip.style.display = 'none';
+    });
+
+
+     // Startup initialization
+    buildSummaryTable();
+    restoreAllStatuses();
+    recalculateTotals();
+
+</script>
+</body>
+</html>

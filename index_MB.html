@@ -1,0 +1,2336 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roof Condition Grid</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #eef1f6; min-height: 100vh;
+        }
+
+        /* APP HEADER */
+        .app-header {
+            background: linear-gradient(135deg, #00529b 0%, #002f5f 100%);
+            color: white; padding: 16px 28px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+        }
+        .header-left  { display: flex; align-items: center; gap: 14px; }
+        .header-icon  { font-size: 30px; }
+        .header-title { font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
+        .header-sub   { font-size: 12px; opacity: 0.72; margin-top: 3px; }
+        .header-right { font-size: 12px; opacity: 0.65; text-align: right; line-height: 1.8; }
+
+        /* MAIN LAYOUT */
+        .main-layout { display: flex; gap: 18px; padding: 20px 24px; align-items: flex-start; }
+
+        /* PANELS */
+        .panel {
+    background: white; border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.09);
+    overflow: hidden; display: flex; flex-direction: column;
+    height: calc(100vh - 110px);
+}
+        .panel-header {
+            background: #f4f6fa; border-bottom: 2px solid #e3e8ef;
+            padding: 10px 16px; font-size: 11px; font-weight: 700;
+            color: #667; text-transform: uppercase; letter-spacing: 1.3px;
+            display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+        }
+
+        /* GRID */
+        .grid-panel { flex: 1; min-width: 0; }
+        .grid-scroll { overflow: auto; flex: 1; }
+        table { border-collapse: collapse; background: white; }
+        th, td {
+            border: 1px solid #dde3ec; padding: 2px; text-align: center;
+            width: 50px; min-width: 50px; max-width: 50px; height: 50px;
+        }
+        th {
+            position: sticky; top: 0; background: #2d4a6e;
+            color: white; z-index: 2; font-size: 10px; font-weight: 600;
+        }
+        .row-label {
+            position: sticky; left: 0; background: #2d4a6e;
+            color: white; z-index: 2; font-weight: 700;
+            width: 40px; min-width: 40px; font-size: 11px;
+        }
+        th:first-child { z-index: 3; background: #1e3552; }
+        tr:nth-child(even) td:not(.row-label) { background-color: rgba(0,0,0,0.014); }
+        select {
+            width: 100%; height: 100%; border: none; outline: none;
+            background: transparent; font-weight: 700; cursor: pointer;
+            text-align: center; font-size: 11px; appearance: none;
+        }
+        /* 🌟 TOGGLE REP BAYS FEATURE */
+        .hide-rep td.status-REP {
+            background-color: #ffffff !important; /* Forces background to white */
+        }
+        .hide-rep td.status-REP select {
+            color: transparent !important; /* Hides the "REP" text */
+        }
+        .hide-rep td.status-REP::after {
+            display: none !important; /* Hides the comment dot */
+        }
+
+        /* STATUS COLORS */
+        .status-    { background-color: #ffffff; }
+        .status-S1  { background-color: #EBF5FF; color: #003366; }
+        .status-S2  { background-color: #BDD7EE; color: #003366; }
+        .status-S3  { background-color: #FFF2CC; color: #7d6000; }
+        .status-S4  { background-color: #FFEB9C; color: #9C5700; }
+        .status-S5  { background-color: #FFC7CE; color: #9C0006; }
+        .status-ACT { background-color: #C6EFCE; color: #006100; }
+        .status-DRN { background-color: #FCE4D6; color: #C65911; }
+        .status-LD  { background-color: #EDEDED; color: #444;    }
+        .status-RD  { background-color: #D0CECE; color: #333;    }
+        .status-AD  { background-color: #AEAAAA; color: #fff;    }
+        .status-REP { background-color: #E2EFDA; color: #375623; }
+
+        /* SUMMARY PANEL */
+        .summary-panel  { width: 460px; flex-shrink: 0; }
+        .summary-scroll { overflow-y: auto; flex: 1; }
+        .summary-table  { border-collapse: collapse; width: 100%; }
+        .summary-table thead th {
+            background: #00529b; color: white; font-size: 11px;
+            padding: 10px 8px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+        }
+        .summary-table tbody tr { transition: background 0.15s; }
+        .summary-table tbody tr:hover td { background-color: #f0f6ff !important; }
+        .summary-table td { padding: 8px 10px; border: 1px solid #eaecf0; vertical-align: middle; }
+        .code-cell  { text-align: center; width: 52px; font-size: 13px; font-weight: 800; }
+        .desc-cell  { font-size: 12px; font-weight: 600; color: #222; text-align: left; line-height: 1.35; }
+        .desc-sub   { font-size: 11px; color: #888; font-weight: 400; font-style: italic; margin-top: 2px; display: block; }
+        .count-cell { text-align: center; width: 60px; font-size: 18px; font-weight: 800; color: #00529b; }
+        .summary-divider td {
+            background: #2d4a6e; color: #c8d8f0; font-size: 10px;
+            font-weight: 700; padding: 5px 10px; letter-spacing: 1.5px; text-transform: uppercase;
+        }
+        tfoot .grand-row td { background: #1e3552; color: #fff; font-size: 14px; font-weight: 800; padding: 11px 10px; }
+        tfoot .grand-row .count-cell { color: #64b5f6; font-size: 20px; }
+
+               /* TOOLTIP */
+        #customTooltip {
+            position: absolute; display: none;
+            background: rgba(10,20,40,0.92); color: #fff;
+            padding: 8px 14px; border-radius: 6px; font-size: 12px;
+            font-weight: 600; pointer-events: none; z-index: 9999;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+            line-height: 1.5; border: 1px solid rgba(255,255,255,0.2);
+        }
+
+
+        /* MODALS */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(10,20,40,0.72);
+            z-index: 10000; justify-content: center; align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: #fff; border-radius: 12px; width: 600px;
+            max-height: 90vh; display: flex; flex-direction: column;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.35); overflow: hidden;
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #00529b, #003366);
+            color: white; padding: 18px 22px;
+        }
+        .modal-header h2 { margin: 0 0 10px 0; font-size: 17px; font-weight: 700; }
+        .modal-status-row  { display: flex; align-items: flex-start; gap: 12px; }
+        .modal-status-code {
+            background: rgba(255,255,255,0.18); color: white;
+            font-weight: 800; font-size: 16px; padding: 6px 18px;
+            border-radius: 20px; white-space: nowrap;
+            border: 1px solid rgba(255,255,255,0.25); flex-shrink: 0;
+        }
+        .modal-status-desc { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+        .modal-status-sub  { font-size: 12px; opacity: 0.82; line-height: 1.5; }
+        .modal-body {
+            padding: 18px 22px; overflow-y: auto; flex-grow: 1; background: #f5f7fa;
+        }
+        .modal-body h3 {
+            margin: 0 0 12px 0; font-size: 11px; color: #aaa;
+            text-transform: uppercase; letter-spacing: 1.5px;
+            border-bottom: 2px solid #e3e8ef; padding-bottom: 8px; font-weight: 700;
+        }
+        .severity-legend {
+            display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 16px;
+            padding: 10px 12px; background: #fff; border-radius: 8px;
+            border: 1px solid #e3e8ef; align-items: center;
+        }
+        .leg-label { font-size: 11px; font-weight: 700; color: #666; margin-right: 4px; }
+        .pill { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 12px; }
+        .pill-S1 { background: #EBF5FF; color: #003366; }
+        .pill-S2 { background: #BDD7EE; color: #003366; }
+        .pill-S3 { background: #FFF2CC; color: #7d6000; }
+        .pill-S4 { background: #FFEB9C; color: #9C5700; }
+        .pill-S5 { background: #FFC7CE; color: #9C0006; }
+        .required-notice {
+            background: #fffde7; border-left: 4px solid #fbc02d;
+            border-radius: 6px; padding: 10px 14px; margin-bottom: 14px;
+            font-size: 13px; color: #5d4037; font-weight: 600;
+        }
+        .history-entry {
+            background: #fff; border-left: 4px solid #00529b; border-radius: 8px;
+            padding: 12px 14px; margin-bottom: 12px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.06);
+        }
+        /* Imported entries get a slightly different left border */
+        .history-entry.imported { border-left-color: #78909c; }
+
+        .he-timestamp { font-size: 11px; color: #bbb; margin-bottom: 5px; }
+        .he-imported-tag {
+            display: inline-block; font-size: 10px; background: #eceff1;
+            color: #546e7a; border-radius: 8px; padding: 1px 7px;
+            margin-bottom: 5px; font-weight: 600;
+        }
+        .he-status    { font-size: 13px; font-weight: 800; color: #00529b; }
+        .he-desc      { font-size: 12px; color: #555; font-weight: 600; margin-top: 2px; }
+        .he-sub       { font-size: 11px; color: #bbb; font-style: italic; margin: 3px 0 8px; line-height: 1.5; }
+        .he-clabel    { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #bbb; margin: 8px 0 4px; }
+        .he-comment   { font-size: 13px; color: #333; white-space: pre-wrap; line-height: 1.6; }
+        .history-photo-wrap  { margin-top: 10px; }
+        .history-photo-label { font-size: 10px; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+        .history-photo-thumb {
+            max-width: 100%; max-height: 180px; border-radius: 8px;
+            border: 2px solid #e3e8ef; cursor: zoom-in; display: block; transition: border-color 0.2s;
+        }
+        .history-photo-thumb:hover { border-color: #00529b; }
+        .no-history { text-align: center; color: #ccc; font-style: italic; padding: 28px 0; font-size: 14px; line-height: 1.7; }
+
+        /* MODAL FOOTER */
+        .modal-footer { padding: 16px 22px; border-top: 2px solid #eef0f4; background: #fff; }
+        .field-label {
+            font-size: 11px; font-weight: 700; color: #667; display: block;
+            margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.8px;
+        }
+        .required-star { color: #dc3545; }
+        .modal-footer textarea {
+            width: 100%; height: 82px; border: 2px solid #dde3ec; border-radius: 8px;
+            padding: 10px; font-size: 13px; line-height: 1.5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            resize: none; box-sizing: border-box; transition: border-color 0.2s; color: #333;
+        }
+        .modal-footer textarea:focus { outline: none; border-color: #00529b; }
+        .modal-footer textarea.error { border-color: #dc3545; background: #fff8f8; }
+        .error-msg { color: #dc3545; font-size: 12px; margin-top: 5px; display: none; }
+        .error-msg.visible { display: block; }
+
+        /* PHOTO SECTION */
+        .photo-section {
+            margin-top: 12px; border: 2px dashed #cdd5e0; border-radius: 8px;
+            padding: 12px 14px; background: #fafbfd; transition: border-color 0.2s;
+        }
+        .photo-section:hover { border-color: #00529b; }
+        .photo-section-title {
+            font-size: 11px; font-weight: 700; color: #778; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 6px;
+            text-transform: uppercase; letter-spacing: 0.8px;
+        }
+        .photo-optional-tag {
+            font-size: 10px; font-weight: 600; color: #aaa;
+            background: #eef0f4; border-radius: 10px; padding: 2px 8px; text-transform: none;
+        }
+        .photo-btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        #photoInput { display: none; }
+        .btn-camera {
+            display: flex; align-items: center; gap: 6px;
+            background: #0097a7; color: white; border: none;
+            padding: 8px 16px; border-radius: 8px; cursor: pointer;
+            font-size: 12px; font-weight: 700; transition: background 0.2s;
+        }
+        .btn-camera:hover { background: #00838f; }
+        .btn-remove-photo {
+            background: none; border: 1.5px solid #dc3545; color: #dc3545;
+            padding: 6px 12px; border-radius: 8px; cursor: pointer;
+            font-size: 12px; font-weight: 600; display: none; transition: all 0.2s;
+        }
+        .btn-remove-photo:hover { background: #dc3545; color: white; }
+        #photoPreviewWrap { margin-top: 10px; display: none; }
+        #photoPreviewWrap .preview-label {
+            font-size: 10px; color: #bbb; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;
+        }
+        #photoPreview { max-width: 100%; max-height: 150px; border-radius: 8px; border: 2px solid #00529b; display: block; }
+
+        /* BUTTONS */
+        .modal-btn-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+        .btn-save {
+            background: #00529b; color: white; border: none;
+            padding: 10px 24px; border-radius: 8px; cursor: pointer;
+            font-size: 14px; font-weight: 700; transition: background 0.2s;
+        }
+        .btn-save:hover  { background: #003d75; }
+        .btn-cancel {
+            background: #dc3545; color: white; border: none;
+            padding: 10px 24px; border-radius: 8px; cursor: pointer;
+            font-size: 14px; font-weight: 700; transition: background 0.2s;
+        }
+        .btn-cancel:hover { background: #b02a37; }
+
+        /* Cell comment dot */
+        .has-comments::after { content: '💬'; font-size: 7px; position: absolute; top: 2px; right: 2px; }
+        td { position: relative; }
+
+        /* FULL SIZE IMAGE VIEWER */
+        #imageViewer {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.94);
+            z-index: 99999; justify-content: center; align-items: center;
+        }
+        #imageViewer.active { display: flex; }
+        #imageViewer img { max-width: 92vw; max-height: 92vh; border-radius: 10px; cursor: zoom-out; }
+        .close-viewer {
+            position: absolute; top: 20px; right: 28px; color: white;
+            font-size: 36px; cursor: pointer; background: none;
+            border: none; font-weight: 700; line-height: 1;
+        }
+
+        /* IMPORT TOAST */
+        .import-toast {
+            position: fixed; bottom: 24px; right: 24px;
+            background: linear-gradient(135deg, #1b5e20, #2e7d32);
+            color: white; padding: 14px 20px; border-radius: 10px;
+            font-size: 13px; font-weight: 600; z-index: 99998;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3); display: none;
+            max-width: 340px; line-height: 1.5;
+            animation: toastSlide 0.4s ease;
+        }
+        .import-toast .toast-title { font-size: 14px; font-weight: 800; margin-bottom: 4px; }
+        @keyframes toastSlide {
+            from { transform: translateX(120px); opacity: 0; }
+            to   { transform: translateX(0);     opacity: 1; }
+        }
+/* =================================================================
+   REPORT BUILDER & REPORT VIEW STYLES
+   ================================================================= */
+
+/* Filter chips */
+.report-filter-grid {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    padding: 12px; background: #fff; border-radius: 8px;
+    border: 1px solid #e3e8ef;
+}
+.report-filter-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 20px; cursor: pointer;
+    font-size: 12px; font-weight: 700;
+    border: 2px solid transparent; transition: all 0.2s;
+    user-select: none;
+}
+.report-filter-chip.selected { border-color: #00529b !important; }
+.report-filter-chip input { display: none; }
+
+/* Radio + toggle */
+.report-radio-group {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 12px; background: #fff; border-radius: 8px;
+    border: 1px solid #e3e8ef;
+}
+.report-radio-label {
+    font-size: 13px; font-weight: 600; color: #333;
+    cursor: pointer; display: flex; align-items: center; gap: 10px;
+}
+.report-toggle-label {
+    font-size: 13px; font-weight: 600; color: #333;
+    cursor: pointer; display: flex; align-items: center; gap: 10px;
+    padding: 12px; background: #fff; border-radius: 8px;
+    border: 1px solid #e3e8ef;
+}
+.report-sort-notice {
+    margin-top: 14px; background: #e8f4fd;
+    border-left: 4px solid #00529b; padding: 10px 14px;
+    border-radius: 6px; font-size: 12px; color: #003366; font-weight: 600;
+}
+
+/* Report section dividers */
+.report-section-divider {
+    background: linear-gradient(135deg, #2d4a6e, #1e3552);
+    color: white; padding: 9px 14px; border-radius: 8px;
+    font-size: 11px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 1.2px; margin: 18px 0 10px;
+    display: flex; align-items: center; gap: 8px;
+}
+
+/* Bay cards */
+.report-bay-card {
+    background: #fff; border-radius: 10px; margin-bottom: 12px;
+    border: 1px solid #e3e8ef; overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.report-bay-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-bottom: 1px solid #e3e8ef;
+    background: #f8fafc; flex-wrap: wrap;
+}
+.report-bay-id { font-size: 15px; font-weight: 800; color: #1e3552; }
+.report-bay-status-badge {
+    font-size: 11px; font-weight: 800;
+    padding: 4px 14px; border-radius: 14px;
+}
+.report-bay-body { padding: 12px 14px; }
+
+/* History entries inside cards */
+.report-entry {
+    border-left: 3px solid #00529b; padding: 10px 12px;
+    margin-bottom: 10px; background: #f5f7fa;
+    border-radius: 0 8px 8px 0;
+}
+.report-entry.imported { border-left-color: #78909c; }
+.report-entry-timestamp {
+    font-size: 11px; color: #999; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.report-entry-status {
+    font-size: 12px; font-weight: 800; color: #00529b; margin-bottom: 4px;
+}
+.report-entry-comment {
+    font-size: 12px; color: #333; white-space: pre-wrap; line-height: 1.6;
+}
+.report-entry-photo {
+    max-width: 100%; max-height: 220px; border-radius: 8px;
+    border: 2px solid #e3e8ef; margin-top: 10px;
+    display: block; cursor: zoom-in; transition: border-color 0.2s;
+}
+.report-entry-photo:hover { border-color: #00529b; }
+.report-no-results {
+    text-align: center; color: #ccc; font-style: italic;
+    padding: 48px 0; font-size: 14px; line-height: 1.8;
+}
+
+/* Print styles for report */
+@media print {
+    #reportPrintBody .report-section-divider {
+        background: #2d4a6e !important; color: white !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    #reportPrintBody .report-bay-card {
+        page-break-inside: avoid;
+        border: 1px solid #ccc !important;
+    }
+    #reportPrintBody .report-bay-header { background: #f8fafc !important; }
+    #reportPrintBody .report-entry { background: #f5f7fa !important; }
+    #reportPrintBody .report-entry-photo { max-height: 180px; }
+}
+
+/* =================================================================
+   PRINT STYLES
+   ================================================================= */
+@media print {
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+    body { background: white !important; margin: 0; padding: 0; }
+
+    /* Hide everything except the print view */
+    .app-header, .main-layout, #customTooltip,
+    .modal-overlay, .import-toast, #imageViewer,
+    .print-btn-wrap { display: none !important; }
+
+    /* Show print view */
+    #printView { display: block !important; }
+
+    /* Print page setup */
+    @page { size: landscape; margin: 0.4in 0.3in; }
+
+    /* Print header */
+    .print-header {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        border-bottom: 3px solid #00529b; padding-bottom: 10px; margin-bottom: 14px;
+    }
+    .print-title { font-size: 16px; font-weight: 800; color: #00529b; }
+    .print-subtitle { font-size: 11px; color: #666; margin-top: 3px; }
+    .print-meta { font-size: 10px; color: #888; text-align: right; line-height: 1.8; }
+
+    /* Print legend */
+    .print-legend {
+        display: flex; flex-wrap: wrap; gap: 5px;
+        margin-bottom: 12px; padding: 8px 10px;
+        border: 1px solid #dde3ec; border-radius: 6px; background: #f9fafc;
+    }
+    .print-legend-title {
+        font-size: 10px; font-weight: 800; color: #444;
+        text-transform: uppercase; letter-spacing: 1px;
+        width: 100%; margin-bottom: 4px;
+    }
+    .print-pill {
+        font-size: 9px; font-weight: 700; padding: 3px 8px;
+        border-radius: 10px; border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    /* Print grid table */
+    .print-grid-wrap { overflow: visible; }
+    .print-grid { border-collapse: collapse; width: 100%; font-size: 7.5px; }
+    .print-grid th, .print-grid td {
+        border: 1px solid #ccc; padding: 1px; text-align: center;
+        width: 18px; min-width: 18px; max-width: 18px; height: 18px;
+        font-weight: 700; font-size: 7px; overflow: hidden;
+    }
+    .print-grid th {
+        background: #2d4a6e !important; color: white !important;
+        font-size: 6.5px; font-weight: 700;
+    }
+    .print-grid .print-row-label {
+        background: #2d4a6e !important; color: white !important;
+        font-weight: 800; font-size: 7px; width: 22px; min-width: 22px;
+    }
+
+    /* Print grid cell colors */
+    .print-cell-S1  { background-color: #EBF5FF !important; color: #003366 !important; }
+    .print-cell-S2  { background-color: #BDD7EE !important; color: #003366 !important; }
+    .print-cell-S3  { background-color: #FFF2CC !important; color: #7d6000 !important; }
+    .print-cell-S4  { background-color: #FFEB9C !important; color: #9C5700 !important; }
+    .print-cell-S5  { background-color: #FFC7CE !important; color: #9C0006 !important; }
+    .print-cell-ACT { background-color: #C6EFCE !important; color: #006100 !important; }
+    .print-cell-DRN { background-color: #FCE4D6 !important; color: #C65911 !important; }
+    .print-cell-LD  { background-color: #EDEDED !important; color: #444    !important; }
+    .print-cell-RD  { background-color: #D0CECE !important; color: #333    !important; }
+    .print-cell-AD  { background-color: #AEAAAA !important; color: #fff    !important; }
+    .print-cell-REP { background-color: #E2EFDA !important; color: #375623 !important; }
+    .print-cell-    { background-color: #ffffff !important; }
+
+    /* Print summary */
+    .print-summary {
+        margin-top: 14px; page-break-inside: avoid;
+        border: 1px solid #dde3ec; border-radius: 6px; overflow: hidden;
+    }
+    .print-summary-title {
+        background: #2d4a6e !important; color: white !important;
+        font-size: 10px; font-weight: 800; padding: 7px 10px;
+        text-transform: uppercase; letter-spacing: 1px;
+    }
+    .print-summary-table { border-collapse: collapse; width: 100%; }
+    .print-summary-table th {
+        background: #00529b !important; color: white !important;
+        font-size: 9px; padding: 5px 8px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .print-summary-table td {
+        font-size: 9px; padding: 4px 8px;
+        border: 1px solid #eaecf0; vertical-align: middle;
+    }
+    .print-summary-table tr:nth-child(even) td { background: #f9fafc !important; }
+    .print-summary-count { text-align: center; font-weight: 800; color: #00529b; font-size: 12px; }
+    .print-grand-row td { background: #1e3552 !important; color: white !important; font-weight: 800; font-size: 11px; }
+    .print-grand-count { color: #64b5f6 !important; font-size: 14px; font-weight: 800; text-align: center; }
+
+    /* Print footer */
+    .print-footer {
+        margin-top: 12px; padding-top: 8px; border-top: 1px solid #dde3ec;
+        font-size: 9px; color: #aaa; display: flex;
+        justify-content: space-between; page-break-inside: avoid;
+    }
+    /* ── GRID READABILITY LINES ───────────────────────── */
+    .print-grid th, .print-grid td {
+        border-color: #999 !important;
+    }
+    .print-grid tr:nth-child(even) td:not(.print-row-label) {
+        background-color: rgba(0,0,0,0.045) !important;
+    }
+    .print-grid th:nth-child(6n),
+    .print-grid td:nth-child(6n) {
+        border-right: 2px solid #555 !important;
+    }
+    .print-grid tr:nth-child(5n) td,
+    .print-grid tr:nth-child(5n) th {
+        border-bottom: 2px solid #555 !important;
+    }
+
+}
+/* SUMMARY PANEL COLLAPSE TOGGLE */
+.summary-panel {
+    transition: width 0.3s ease, opacity 0.3s ease, min-width 0.3s ease;
+}
+.summary-panel.collapsed {
+    width: 0 !important;
+    min-width: 0 !important;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0;
+}
+/* AFTER */
+.toggle-btn {
+    background: #2d4a6e;
+    color: white;
+    border: 2px solid #4a6a8e;
+    border-radius: 8px;
+    padding: 8px 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 700;
+    align-self: center;
+    flex-shrink: 0;
+    height: 80px;
+    writing-mode: vertical-rl;
+    transition: background 0.2s;
+    line-height: 1;
+}
+.toggle-btn:hover { background: #3d5a7e; }
+
+
+    </style>
+</head>
+<body>
+
+    <!-- APP HEADER -->
+    <div class="app-header">
+        <div class="header-left">
+            <span class="header-icon">🏗️</span>
+            <div>
+                <div class="header-title">Roof Condition Grid — Main Building</div>
+                <div class="header-sub">Bay Status Tracker — Double-click any cell to view full history log</div>
+            </div>
+        </div>
+        <div class="header-right">
+            💡 Select a status to log an entry &nbsp;|&nbsp; 📷 Photos can be attached<br>
+            💬 Double-click any bay to view its full history
+        </div>
+<!-- TOGGLE REP BUTTON -->
+<div style="flex-shrink:0; margin-left:10px;">
+    <button id="toggleRepBtn" onclick="toggleRepBays()"
+            style="background:#37474f; color:white; border:2px solid #263238;
+                   padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px;
+                   font-weight:700; display:flex; align-items:center; gap:8px;
+                   transition:background 0.2s; white-space:nowrap;"
+            onmouseover="this.style.background='#263238'"
+            onmouseout="this.style.background='#37474f'">
+        👁️ Hide Repaired (REP)
+    </button>
+</div>
+
+<!-- PRINT BUTTON -->
+<div class="print-btn-wrap" style="flex-shrink:0; margin-left:16px;">
+    <button onclick="openPrintView()"
+            style="background:rgba(255,255,255,0.15); color:white; border:2px solid rgba(255,255,255,0.4);
+                   padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px;
+                   font-weight:700; display:flex; align-items:center; gap:8px;
+                   transition:background 0.2s; white-space:nowrap;"
+            onmouseover="this.style.background='rgba(255,255,255,0.28)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+        🖨️ Print Grid
+    </button>
+</div>
+
+<!-- REPORT BUTTON -->
+<div style="flex-shrink:0; margin-left:10px;">
+    <button onclick="openReportBuilder()"
+            style="background:rgba(255,255,255,0.15); color:white; border:2px solid rgba(255,255,255,0.4);
+                   padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px;
+                   font-weight:700; display:flex; align-items:center; gap:8px;
+                   transition:background 0.2s; white-space:nowrap;"
+            onmouseover="this.style.background='rgba(255,255,255,0.28)'"
+            onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+        📋 Detailed Report
+    </button>
+</div>
+
+<!-- EXPORT BUTTON -->
+<div style="flex-shrink:0; margin-left:10px;">
+    <button onclick="exportUpdatedHTML()"
+            style="background:#00796b; color:white; border:2px solid #004d40;
+                   padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px;
+                   font-weight:700; display:flex; align-items:center; gap:8px;
+                   transition:background 0.2s; white-space:nowrap;"
+            onmouseover="this.style.background='#00695c'"
+            onmouseout="this.style.background='#00796b'">
+        💾 Export & Save Changes
+    </button>
+</div>
+<!-- IMPORT SPREADSHEET BUTTON -->
+<div style="flex-shrink:0; margin-left:10px;">
+    <button onclick="triggerCSVInput()"
+            style="background:#0288d1; color:white; border:2px solid #01579b;
+                   padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px;
+                   font-weight:700; display:flex; align-items:center; gap:8px;
+                   transition:background 0.2s; white-space:nowrap;"
+            onmouseover="this.style.background='#0277bd'"
+            onmouseout="this.style.background='#0288d1'">
+        📥 Import Spreadsheet (CSV)
+    </button>
+    <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVUpload(this)" style="display:none;">
+</div>
+
+    </div>
+
+    <!-- IMPORT TOAST NOTIFICATION -->
+    <div class="import-toast" id="importToast">
+        <div class="toast-title">✅ Historical Data Loaded</div>
+        <span id="importToastMsg"></span>
+    </div>
+
+    <!-- TOOLTIP -->
+    <div id="customTooltip"></div>
+
+    <!-- FULL SIZE IMAGE VIEWER -->
+    <div id="imageViewer">
+        <button class="close-viewer" id="closeViewerBtn">&#x2715;</button>
+        <img id="viewerImg" src="" alt="Full size photo">
+    </div>
+
+    <!-- MODAL 1: Status Change + Required Comment -->
+    <div class="modal-overlay" id="commentModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2 id="commentModalTitle">📍 Bay Log Entry</h2>
+                <div class="modal-status-row">
+                    <span class="modal-status-code" id="modalStatusCode"></span>
+                    <div>
+                        <div class="modal-status-desc" id="modalStatusDesc"></div>
+                        <div class="modal-status-sub"  id="modalStatusSub"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="severity-legend">
+                    <span class="leg-label">⚠️ Scale:</span>
+                    <span class="pill pill-S1">S1 — Aisles</span>
+                    <span class="pill pill-S2">S2 — Walkways</span>
+                    <span class="pill pill-S3">S3 — Equipment</span>
+                    <span class="pill pill-S4">S4 — Control Panels</span>
+                    <span class="pill pill-S5">S5 — ⚡ Electrical Hazard</span>
+                </div>
+                <h3>📋 Previous Activity</h3>
+                <div id="commentModalHistory"></div>
+            </div>
+            <div class="modal-footer">
+                <div class="required-notice">
+                    ⚠️ A comment is <strong>required</strong> before this status is recorded. Click <strong>Cancel</strong> to revert.
+                </div>
+                <label class="field-label" for="commentInput">
+                    Comment <span class="required-star">★ Required</span>
+                </label>
+                <textarea id="commentInput" placeholder="Describe the condition, exact location, action taken, or observations for this bay..."></textarea>
+                <div class="error-msg" id="commentError">⚠️ A comment is required before the status can be saved.</div>
+                <div class="photo-section">
+                    <div class="photo-section-title">
+                        📷 Attach Photo <span class="photo-optional-tag">Optional</span>
+                    </div>
+                    <div class="photo-btn-row">
+                        <button class="btn-camera" onclick="triggerPhotoInput()">📷 Take Photo / Choose File</button>
+                        <button class="btn-remove-photo" id="removePhotoBtn" onclick="removePhoto()">✖ Remove</button>
+                    </div>
+                    <input type="file" id="photoInput" accept="image/*" capture="environment" onchange="handlePhotoSelected(this)">
+                    <div id="photoPreviewWrap">
+                        <div class="preview-label">Preview</div>
+                        <img id="photoPreview" src="" alt="Preview">
+                    </div>
+                </div>
+                <div class="modal-btn-row">
+                    <button class="btn-cancel" onclick="cancelStatusChange()">✖ Cancel & Revert</button>
+                    <button class="btn-save"   onclick="confirmStatusChange()">💾 Save Status + Comment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Full History View -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal-box">
+            <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;">
+                <h2 id="historyModalTitle" style="margin:0;">Bay History</h2>
+                <button onclick="closeHistoryModal()"
+                        style="background:none;border:none;color:white;font-size:26px;cursor:pointer;font-weight:700;line-height:1;">
+                    &#x2715;
+                </button>
+            </div>
+            <div class="modal-body">
+                <h3>📋 Full Activity Log</h3>
+                <div id="historyLog"></div>
+            </div>
+            <!-- ADD UPDATE FOOTER -->
+            <div class="modal-footer">
+                <div style="background:#e8f4fd;border-left:4px solid #00529b;border-radius:6px;
+                            padding:10px 14px;margin-bottom:14px;font-size:13px;
+                            color:#003366;font-weight:600;">
+                    📝 Add a new update below — the current status will be kept unchanged.
+                </div>
+                <label class="field-label" for="updateCommentInput">
+                    New Comment <span class="required-star">★ Required</span>
+                </label>
+                <textarea id="updateCommentInput"
+                          placeholder="Add new observations, actions taken, or updated condition notes..."></textarea>
+                <div class="error-msg" id="updateCommentError">
+                    ⚠️ Please enter a comment before saving.
+                </div>
+                <div class="photo-section" style="margin-top:12px;">
+                    <div class="photo-section-title">
+                        📷 Attach Photo <span class="photo-optional-tag">Optional</span>
+                    </div>
+                    <div class="photo-btn-row">
+                        <button class="btn-camera" onclick="triggerUpdatePhotoInput()">
+                            📷 Take Photo / Choose File
+                        </button>
+                        <button class="btn-remove-photo" id="removeUpdatePhotoBtn"
+                                onclick="removeUpdatePhoto()">✖ Remove</button>
+                    </div>
+                    <input type="file" id="updatePhotoInput" accept="image/*"
+       capture="environment" onchange="handleUpdatePhotoSelected(this)"
+       style="display:none;">
+
+                    <div id="updatePhotoPreviewWrap" style="display:none;margin-top:10px;">
+                        <div class="preview-label">Preview</div>
+                        <img id="updatePhotoPreview" src="" alt="Preview"
+                             style="max-width:100%;max-height:150px;border-radius:8px;
+                                    border:2px solid #00529b;display:block;">
+                    </div>
+                </div>
+                <div class="modal-btn-row">
+                    <button class="btn-cancel" onclick="closeHistoryModal()">✖ Close</button>
+                    <button class="btn-save" onclick="saveUpdateEntry()">
+                        💾 Save Update
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+   <!-- REPORT BUILDER MODAL -->
+<div class="modal-overlay" id="reportBuilderModal">
+    <div class="modal-box" style="width:680px;">
+        <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;">
+            <h2 style="margin:0;">📋 Build Detailed Report</h2>
+            <button onclick="closeReportBuilder()"
+                    style="background:none;border:none;color:white;font-size:26px;cursor:pointer;font-weight:700;line-height:1;">
+                &#x2715;
+            </button>
+        </div>
+        <div class="modal-body">
+            <h3>🔍 Filter by Status</h3>
+            <div class="report-filter-grid" id="reportStatusFilter"></div>
+
+            <h3 style="margin-top:16px;">📋 History to Include</h3>
+            <div class="report-radio-group">
+                <label class="report-radio-label">
+                    <input type="radio" name="historyDepth" value="latest" checked>
+                    Most recent entry only per bay
+                </label>
+                <label class="report-radio-label">
+                    <input type="radio" name="historyDepth" value="all">
+                    Full history for each bay
+                </label>
+            </div>
+
+            <h3 style="margin-top:16px;">📷 Photos</h3>
+            <label class="report-toggle-label">
+                <input type="checkbox" id="reportShowPhotos" checked>
+                Include attached photos in report
+            </label>
+
+            <div class="report-sort-notice">
+                📊 Bays will be sorted by severity — S5 (critical) first, down to REP (resolved)
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div class="modal-btn-row">
+                <button class="btn-cancel" onclick="closeReportBuilder()">✖ Cancel</button>
+                <button class="btn-save"   onclick="generateReport()">📋 Generate Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- REPORT VIEW MODAL -->
+<div class="modal-overlay" id="reportViewModal">
+    <div class="modal-box" style="width:820px; max-height:95vh;">
+        <div class="modal-header" style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <h2 style="margin:0;">📋 Detailed Bay Report</h2>
+                <div style="font-size:11px;opacity:0.75;margin-top:4px;" id="reportViewSubtitle"></div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+                <button onclick="printReport()"
+                        style="background:rgba(255,255,255,0.15);color:white;border:2px solid rgba(255,255,255,0.4);
+                               padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;">
+                    🖨️ Print Report
+                </button>
+                <button onclick="closeReportView()"
+                        style="background:none;border:none;color:white;font-size:26px;cursor:pointer;font-weight:700;line-height:1;">
+                    &#x2715;
+                </button>
+            </div>
+        </div>
+               <div class="modal-body" id="reportViewBody"></div>
+    </div>
+</div>
+
+
+ <!-- MAIN LAYOUT -->
+    <!-- AFTER — button now lives between the two panels -->
+<div class="main-layout">
+    <div class="panel grid-panel">
+        <div class="panel-header">🗺️ Roof Bay Grid &mdash; 50 ft &times; 50 ft Sections</div>
+
+        <div class="grid-scroll"><table id="mainGrid"></table></div>
+    </div>
+
+    <!-- ✅ Toggle button is now OUTSIDE both panels — always visible! -->
+    <button class="toggle-btn" id="toggleSummaryBtn" 
+            onclick="toggleSummary()" 
+            title="Collapse Summary"
+            style="align-self:center; flex-shrink:0; background:#2d4a6e; 
+                   color:white; border:2px solid #4a6a8e; border-radius:8px;
+                   padding:8px 6px; cursor:pointer; font-size:16px;
+                   font-weight:700; writing-mode:vertical-rl; height:80px;">
+        ◀
+    </button>
+
+    <div class="panel summary-panel">
+        <div class="panel-header">📊 Status Summary</div>
+
+            <div class="summary-scroll">
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th style="width:52px;">Code</th>
+                            <th>Description</th>
+                            <th style="width:62px;">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryBody"></tbody>
+                    <tfoot>
+                        <tr class="grand-row">
+                            <td colspan="2" style="text-align:left;padding-left:12px;">GRAND TOTAL</td>
+                            <td class="count-cell" id="grandTotal">0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // =================================================================
+    // TOGGLE REP BAYS VISIBILITY
+    // =================================================================
+    function toggleRepBays() {
+        const gridTable = document.getElementById('mainGrid');
+        const btn = document.getElementById('toggleRepBtn');
+        const isHidden = gridTable.classList.toggle('hide-rep');
+        
+        if (isHidden) {
+            btn.innerHTML = '👁️ Show Repaired (REP)';
+            btn.style.background = '#2e7d32'; // Turns green to indicate they can turn it back on
+            btn.style.borderColor = '#1b5e20';
+            btn.onmouseover = () => btn.style.background = '#1b5e20';
+            btn.onmouseout = () => btn.style.background = '#2e7d32';
+        } else {
+            btn.innerHTML = '👁️ Hide Repaired (REP)';
+            btn.style.background = '#37474f'; // Turns back to dark slate grey
+            btn.style.borderColor = '#263238';
+            btn.onmouseover = () => btn.style.background = '#263238';
+            btn.onmouseout = () => btn.style.background = '#37474f';
+        }
+    }
+
+    // =================================================================
+    // 1. STATUS CONFIGURATION
+    // =================================================================
+    const statuses = [
+        { value:'',    label:'',    cssClass:'',   description:'',                              sub:'' },
+        { value:'S1',  label:'S1',  cssClass:'S1',  description:'Severity 1 — Water in Aisles',  sub:'Water present in general traffic or forklift aisles. Low immediate risk. Place wet floor signage, contain if possible, and schedule roof repair.' },
+        { value:'S2',  label:'S2',  cssClass:'S2',  description:'Severity 2 — Water on Walkways', sub:'Water present on designated pedestrian walkways. Slip and fall hazard. Cordon off the affected area immediately. Repair within 14 days.' },
+        { value:'S3',  label:'S3',  cssClass:'S3',  description:'Severity 3 — Water on Equipment', sub:'Water contacting production machinery or facility equipment. Risk of damage, malfunction, or downtime. Protect equipment, notify maintenance, repair within 7 days.' },
+        { value:'S4',  label:'S4',  cssClass:'S4',  description:'Severity 4 — Water on Control Panels', sub:'Water reaching electrical control panels or operator interfaces. High risk of equipment failure or electrical fault. Isolate affected systems if safe. Escalate and repair immediately.' },
+        { value:'S5',  label:'S5',  cssClass:'S5',  description:'Severity 5 — ⚡ Critical Electrical / Injury Hazard', sub:'Water on electrical panels, bus bars, or exposed wiring. Immediate risk of electrocution, arc flash, or serious injury. STOP work. Isolate power if safe. Evacuate and escalate to EHS and management NOW.' },
+        { value:'ACT', label:'ACT', cssClass:'ACT', description:'Active Leak — Unrated',             sub:'Leak confirmed and actively dripping. Severity level not yet assessed. Assign severity as soon as conditions are evaluated.' },
+        { value:'DRN', label:'DRN', cssClass:'DRN', description:'Repaired Drain',                    sub:'Drain issue identified and repaired. Monitor at next scheduled inspection for recurrence.' },
+        { value:'L+D', label:'L+D', cssClass:'LD',  description:'Active Leak + Active Drain Issue',  sub:'Both an active roof leak and a drain blockage or failure are present simultaneously. Address the drain while the leak is repaired.' },
+        { value:'R+D', label:'R+D', cssClass:'RD',  description:'Repair in Progress + Active Drain', sub:'Leak repair is underway but the drain issue remains active and unresolved. Monitor closely until both are closed.' },
+        { value:'A+D', label:'A+D', cssClass:'AD',  description:'Temporary Action Taken + Active Drain', sub:'Temporary fix applied to the leak. Drain still active. A permanent repair is still required — do not close out this bay.' },
+        { value:'REP', label:'REP', cssClass:'REP', description:'Repaired — Leak Resolved',          sub:'Roof leak has been fully repaired and signed off. No active moisture present. Monitor at next scheduled inspection to confirm closure.' }
+    ];
+
+    function getStatusInfo(val) {
+        return statuses.find(s => s.value === val) || statuses[0];
+    }
+
+    const customRows = [
+        'AA','A','A/B','B','B-C','C','CC','D','E','F',
+        'G','G-J','H','J','JN','K','L','M','N','P','Q','R','S'
+    ];
+    const customCols = [
+        '013','012','011','010','09','08','07','06','05','04','03','02','01',
+        '1','2','3','4','5','6','7','8','9','10','11','12','13','14','15',
+        '16','17','18','19','20','21','22','23','24','25','26','27','28',
+        '29','30','31','32','33','34','35','36','37','38','39','40','41',
+        '42','43','44','45','46','47'
+    ];
+
+    // =================================================================
+    // 2. LEGACY DATA — All existing records from the tracking log
+    //    Each entry: bayKeys, callInDate, severity, repairDate,
+    //                contractor, notes, currentStatus
+    // =================================================================
+    const preloadData = [
+        // ── K ──────────────────────────────────────────────────────
+        { bayKeys:['K-04'], callInDate:'3/2/2026', severity:'S3', repairDate:null, contractor:null, notes:'', currentStatus:'S3' },
+
+        // ── A ──────────────────────────────────────────────────────
+        { bayKeys:['A-04'], callInDate:'2/11/2026', severity:null, repairDate:'3/7/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['A-05'], callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['A-1'],  callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['A-11'], callInDate:'2/11/2026', severity:null, repairDate:null,         contractor:null,        notes:'Tarp hanging under water — source appears to be the transition from the roof to an exhaust or air supply duct, or the duct itself. Hard to determine from the ground.', currentStatus:'ACT' },
+        { bayKeys:['A-13'], callInDate:'4/28/2026', severity:null, repairDate:'4/29/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['A-14'], callInDate:'5/20/2026', severity:null, repairDate:null,         contractor:null,        notes:'(2) Leaks — one on each side of the aisle. One is directly in front of the Eines PDP.', currentStatus:'ACT' },
+        { bayKeys:['A-17'], callInDate:'4/28/2026', severity:null, repairDate:'4/29/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['A-18'], callInDate:'4/28/2026', severity:null, repairDate:'4/29/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['A-19'], callInDate:'3/16/2026', severity:null, repairDate:'3/18/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['A-20'], callInDate:'4/28/2026', severity:null, repairDate:'4/29/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['A-22'], callInDate:'4/28/2026', severity:null, repairDate:'4/29/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['A-24','A-25'], callInDate:'4/28/2026', severity:null, repairDate:'4/29/2026', contractor:'Schreiber', notes:'Spans bays A-24 and A-25.', currentStatus:'REP' },
+        { bayKeys:['A-28','A-29'], callInDate:'4/28/2026', severity:null, repairDate:'4/29/2026', contractor:'Schreiber', notes:'Spans bays A-28 and A-29.', currentStatus:'REP' },
+        { bayKeys:['A-33','A-34'], callInDate:'4/28/2026', severity:null, repairDate:'4/29/2026', contractor:'Schreiber', notes:'Spans bays A-33 and A-34.', currentStatus:'REP' },
+        { bayKeys:['A-36'], callInDate:'5/20/2026', severity:null, repairDate:null, contractor:null, notes:'', currentStatus:'ACT' },
+        { bayKeys:['A-37'], callInDate:'5/20/2026', severity:null, repairDate:null, contractor:null, notes:'', currentStatus:'ACT' },
+        { bayKeys:['A-4'],  callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['A-9'],  callInDate:'4/28/2026', severity:null, repairDate:'4/29/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── AA ─────────────────────────────────────────────────────
+        { bayKeys:['AA-04','AA-03'], callInDate:'2/11/2026', severity:null, repairDate:'3/7/2026', contractor:'Schreiber', notes:'Spans bays AA-04 and AA-03.', currentStatus:'REP' },
+        { bayKeys:['AA-05'],         callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── B ──────────────────────────────────────────────────────
+        { bayKeys:['B-02'], callInDate:'5/20/2026', severity:null, repairDate:null, contractor:null, notes:'Leaking past valve out of a stubbed off pipe.', currentStatus:'ACT' },
+        { bayKeys:['B-03'], callInDate:'2/11/2026', severity:null, repairDate:'3/3/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['B-05'], callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        // B12 — two separate reports
+        { bayKeys:['B-12'], callInDate:'4/11/2026', severity:'S5', repairDate:null, contractor:null, notes:'Location: 20 ft South, 20 ft West of column.', currentStatus:'S5' },
+        { bayKeys:['B-12'], callInDate:'4/25/2026', severity:'S5', repairDate:null, contractor:null, notes:'Follow-up report. Location: 3 ft East, 6 ft South.', currentStatus:'S5' },
+        { bayKeys:['B-14'], callInDate:'5/6/2026',  severity:'S5', repairDate:null, contractor:null, notes:'Leak on lighting power rail, right at column. ELECTRICAL HAZARD — immediate escalation required.', currentStatus:'S5' },
+        { bayKeys:['B-15'], callInDate:'5/20/2026', severity:null, repairDate:null, contractor:null, notes:'Still very bad — coming from failing roof seams. Dripping on light fixture and splashing on the floor. On the list since the 100-year rain event at end of April.', currentStatus:'ACT' },
+        { bayKeys:['B-16'], callInDate:'4/25/2026', severity:'S5', repairDate:null, contractor:null, notes:'Location: 35 ft East, 12 ft South. ELECTRICAL HAZARD.', currentStatus:'S5' },
+        { bayKeys:['B-21'], callInDate:'5/20/2026', severity:null, repairDate:null, contractor:null, notes:'United Break Area.', currentStatus:'ACT' },
+        { bayKeys:['B-31'], callInDate:'4/25/2026', severity:'S5', repairDate:null, contractor:null, notes:'Location: 40 ft East, 3 ft South. ELECTRICAL HAZARD.', currentStatus:'S5' },
+        { bayKeys:['B-34'], callInDate:'5/20/2026', severity:null, repairDate:null, contractor:null, notes:'Main Building (MB).', currentStatus:'ACT' },
+        { bayKeys:['B-37'], callInDate:'5/20/2026', severity:'S5', repairDate:null, contractor:null, notes:'CRITICAL ELECTRICAL HAZARD — immediate escalation required.', currentStatus:'S5' },
+        { bayKeys:['B-39'], callInDate:'4/25/2026', severity:'S5', repairDate:null, contractor:null, notes:'Location: 40 ft East, 15 ft South. ELECTRICAL HAZARD.', currentStatus:'S5' },
+        { bayKeys:['B-7'],  callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['B-9'],  callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── B-C ────────────────────────────────────────────────────
+        { bayKeys:['B-C-17'], callInDate:'4/28/2026', severity:null, repairDate:null, contractor:null, notes:'', currentStatus:'ACT' },
+
+        // ── C ──────────────────────────────────────────────────────
+        { bayKeys:['C-13'], callInDate:'5/20/2026', severity:null, repairDate:null,         contractor:null,        notes:'Leak source is exhaust duct.', currentStatus:'ACT' },
+        { bayKeys:['C-17'], callInDate:'2/11/2026', severity:null, repairDate:'4/29/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['C-19'], callInDate:'5/20/2026', severity:null, repairDate:null,         contractor:null,        notes:'(3) separate leaks — all from failing ceiling/roof seams.', currentStatus:'ACT' },
+        { bayKeys:['C-35'], callInDate:'5/20/2026', severity:null, repairDate:null,         contractor:null,        notes:'Has been leaking since the first list in April and still bad. Failing ceiling/roof seams.', currentStatus:'ACT' },
+        { bayKeys:['C-37'], callInDate:'5/20/2026', severity:null, repairDate:null,         contractor:null,        notes:'Also on the April leak list — same issue, failing ceiling/roof seam.', currentStatus:'ACT' },
+        { bayKeys:['C-43'], callInDate:'2/11/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['C-9'],  callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── D ──────────────────────────────────────────────────────
+        { bayKeys:['D-03'], callInDate:'2/11/2026', severity:null, repairDate:'3/3/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['D-04'], callInDate:'2/11/2026', severity:null, repairDate:'3/3/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['D-19'], callInDate:'2/11/2026', severity:null, repairDate:'3/3/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['D-22'], callInDate:'2/11/2026', severity:null, repairDate:'2/20/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['D-24'], callInDate:'3/2/2026',  severity:'S3', repairDate:null,         contractor:null,        notes:'', currentStatus:'S3' },
+        { bayKeys:['D-44'], callInDate:'5/7/2026',  severity:null, repairDate:null,         contractor:null,        notes:'12 inch pipe next to the column, up close to the ceiling (west of column). Water at junction where support beam meets the galvanized corrugated roofing.', currentStatus:'ACT' },
+        { bayKeys:['D-9'],  callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── E ──────────────────────────────────────────────────────
+        { bayKeys:['E-03'], callInDate:'2/14/2026', severity:'S1', repairDate:null,        contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['E-10'], callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['E-27'], callInDate:'2/14/2026', severity:'S1', repairDate:null,        contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['E-9'],  callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── F ──────────────────────────────────────────────────────
+        { bayKeys:['F-09'], callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['F-19'], callInDate:'2/26/2026', severity:null, repairDate:'2/26/2026', contractor:'Schreiber', notes:'Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['F-26'], callInDate:'3/3/2026',  severity:null, repairDate:'3/3/2026',  contractor:'Royal',     notes:'Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['F-27'], callInDate:'2/14/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['F-29'], callInDate:'3/2/2026',  severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['F-35'], callInDate:'3/3/2026',  severity:null, repairDate:'3/3/2026',  contractor:'Royal',     notes:'Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['F-9'],  callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── G ──────────────────────────────────────────────────────
+        { bayKeys:['G-07'], callInDate:'3/2/2026',  severity:'S1', repairDate:'3/2/2026',  contractor:'Schreiber', notes:'Small leak in body near conveyor. Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['G-2'],  callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['G-29'], callInDate:'2/14/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['G-33','H-33'], callInDate:'3/2/2026', severity:'S5', repairDate:null,  contractor:null,        notes:'Leak spanning G33 to H33. CRITICAL ELECTRICAL HAZARD — immediate escalation to EHS required.', currentStatus:'S5' },
+        { bayKeys:['G-46'], callInDate:'5/7/2026',  severity:null, repairDate:null,         contractor:null,        notes:'Roof transition to a higher roof level. Water pouring down from above. Located at the walkway leading to the restrooms in that area.', currentStatus:'ACT' },
+        { bayKeys:['G-9'],  callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── G-J ────────────────────────────────────────────────────
+        { bayKeys:['G-J-34'], callInDate:'2/11/2026', severity:'S1', repairDate:null, contractor:null, notes:'', currentStatus:'S1' },
+
+        // ── H ──────────────────────────────────────────────────────
+        { bayKeys:['H-04'], callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['H-13'], callInDate:'3/2/2026',  severity:'S1', repairDate:null,         contractor:null,        notes:'25 ft south of column.', currentStatus:'S1' },
+        { bayKeys:['H-27'], callInDate:'2/14/2026', severity:'S1', repairDate:'3/3/2026',  contractor:'Royal',     notes:'', currentStatus:'REP' },
+        { bayKeys:['H-37'], callInDate:'3/3/2026',  severity:null, repairDate:'3/3/2026',  contractor:'Royal',     notes:'Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['H-38'], callInDate:'2/11/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'Roof drain replacement required.', currentStatus:'S1' },
+        { bayKeys:['H-40'], callInDate:'2/11/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['H-41'], callInDate:'5/20/2026', severity:null, repairDate:null,         contractor:null,        notes:'Hard to determine leak source without flashlight. Follow-up inspection required.', currentStatus:'ACT' },
+        { bayKeys:['H-42'], callInDate:'5/6/2026',  severity:null, repairDate:null,         contractor:null,        notes:'', currentStatus:'ACT' },
+
+        // ── J ──────────────────────────────────────────────────────
+        { bayKeys:['J-16'], callInDate:'2/11/2026', severity:null, repairDate:'2/26/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['J-9'],  callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── JN ─────────────────────────────────────────────────────
+        { bayKeys:['JN-2'], callInDate:'2/11/2026', severity:'S1', repairDate:null, contractor:null, notes:'', currentStatus:'S1' },
+
+        // ── K ──────────────────────────────────────────────────────
+        { bayKeys:['K-010'], callInDate:'2/11/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['K-011'], callInDate:'2/14/2026', severity:'S1', repairDate:'3/6/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['K-14'],  callInDate:'3/2/2026',  severity:'S4', repairDate:null,         contractor:null,        notes:'', currentStatus:'S4' },
+        { bayKeys:['K-15'],  callInDate:'2/26/2026', severity:'S4', repairDate:'2/26/2026', contractor:'Schreiber', notes:'Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['K-16'],  callInDate:'2/11/2026', severity:null, repairDate:'3/7/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['K-17'],  callInDate:'3/2/2026',  severity:'S4', repairDate:'3/7/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['K-36'],  callInDate:'2/11/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['K-42'],  callInDate:'3/3/2026',  severity:null, repairDate:null,         contractor:'Royal',     notes:'Assigned to Royal. Awaiting repair.', currentStatus:'ACT' },
+        { bayKeys:['K-43'],  callInDate:'5/20/2026', severity:null, repairDate:null,         contractor:null,        notes:'Leak from exhaust duct.', currentStatus:'ACT' },
+
+        // ── L ──────────────────────────────────────────────────────
+        { bayKeys:['L-04'], callInDate:'2/11/2026', severity:null, repairDate:'3/6/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['L-21'], callInDate:'2/11/2026', severity:null, repairDate:'3/1/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['L-23'], callInDate:'3/1/2026',  severity:'S4', repairDate:'3/1/2026', contractor:'Schreiber', notes:'Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['L-6'],  callInDate:'2/11/2026', severity:null, repairDate:'3/7/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── M ──────────────────────────────────────────────────────
+        { bayKeys:['M-04'],    callInDate:'3/2/2026',  severity:'S4', repairDate:'3/6/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['M-09'],    callInDate:'2/11/2026', severity:'S1', repairDate:null,        contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['M-13'],    callInDate:'2/11/2026', severity:'S1', repairDate:null,        contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['M-30'],    callInDate:'2/11/2026', severity:'S1', repairDate:null,        contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['M-39','M-40'], callInDate:'5/6/2026', severity:null, repairDate:null, contractor:null, notes:'Spans bays M-39 and M-40.', currentStatus:'ACT' },
+        { bayKeys:['M-40','M-41'], callInDate:'5/6/2026', severity:null, repairDate:null, contractor:null, notes:'Spans bays M-40 and M-41.', currentStatus:'ACT' },
+        { bayKeys:['M-41'],    callInDate:'5/20/2026', severity:null, repairDate:null,        contractor:null,        notes:'Source may be an exhaust fan opening or a large duct that is stubbed off and not capped.', currentStatus:'ACT' },
+        { bayKeys:['M-43'],    callInDate:'3/3/2026',  severity:null, repairDate:'3/3/2026', contractor:'Royal',     notes:'Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['M-5'],     callInDate:'2/11/2026', severity:null, repairDate:'3/7/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── N ──────────────────────────────────────────────────────
+        { bayKeys:['N-13'], callInDate:'3/2/2026',  severity:'S4', repairDate:'3/7/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['N-22'], callInDate:'2/11/2026', severity:null, repairDate:'2/20/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['N-23'], callInDate:'2/11/2026', severity:'S1', repairDate:'2/20/2026', contractor:'Royal',     notes:'', currentStatus:'REP' },
+        { bayKeys:['N-35'], callInDate:'3/3/2026',  severity:null, repairDate:'3/3/2026',  contractor:'Royal',     notes:'Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['N-37'], callInDate:'2/11/2026', severity:'S1', repairDate:'3/3/2026',  contractor:'Royal',     notes:'', currentStatus:'REP' },
+        { bayKeys:['N-39'], callInDate:'5/6/2026',  severity:null, repairDate:null,         contractor:null,        notes:'', currentStatus:'ACT' },
+        { bayKeys:['N-40'], callInDate:'3/3/2026',  severity:null, repairDate:'3/3/2026',  contractor:'Royal',     notes:'Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['N-6'],  callInDate:'2/11/2026', severity:null, repairDate:'3/7/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['N-7'],  callInDate:'2/11/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['N-9'],  callInDate:'2/11/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+
+        // ── P ──────────────────────────────────────────────────────
+        { bayKeys:['P-10'], callInDate:'3/2/2026',  severity:'S4', repairDate:null,         contractor:null,        notes:'', currentStatus:'S4' },
+        { bayKeys:['P-12'], callInDate:'2/11/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['P-18'], callInDate:'2/11/2026', severity:null, repairDate:'2/26/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['P-35'], callInDate:'5/20/2026', severity:null, repairDate:null,         contractor:null,        notes:'Corroding 12 inch pipe in ceiling steel. On the list since April. Needs further evaluation and repair.', currentStatus:'ACT' },
+        { bayKeys:['P-5'],  callInDate:'5/6/2026',  severity:'S4', repairDate:null,         contractor:null,        notes:'Leak on control panels — covered in plastic as a temporary measure. Permanent repair required. Do not close out.', currentStatus:'S4' },
+        { bayKeys:['P-6'],  callInDate:'2/14/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['P-8'],  callInDate:'2/11/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+
+        // ── Q ──────────────────────────────────────────────────────
+        { bayKeys:['Q-02'], callInDate:'2/11/2026', severity:null, repairDate:'3/3/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['Q-04'], callInDate:'2/14/2026', severity:'S1', repairDate:null,         contractor:null,        notes:'', currentStatus:'S1' },
+        { bayKeys:['Q-05'], callInDate:'2/11/2026', severity:null, repairDate:'4/22/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['Q-13'], callInDate:'2/14/2026', severity:'S1', repairDate:'2/26/2026', contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['Q-14'], callInDate:'2/11/2026', severity:null, repairDate:'3/7/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+        { bayKeys:['Q-24'], callInDate:'2/11/2026', severity:'S1', repairDate:'3/3/2026',  contractor:'Royal',     notes:'', currentStatus:'REP' },
+        { bayKeys:['Q-29'], callInDate:'5/6/2026',  severity:null, repairDate:'5/6/2026',  contractor:'Schreiber', notes:'Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['Q-33'], callInDate:'5/6/2026',  severity:'S1', repairDate:'5/6/2026',  contractor:'Schreiber', notes:'Repaired same day.', currentStatus:'REP' },
+        { bayKeys:['Q-35'], callInDate:'3/2/2026',  severity:'S3', repairDate:'3/3/2026',  contractor:'Royal',     notes:'', currentStatus:'REP' },
+        { bayKeys:['Q-7'],  callInDate:'2/11/2026', severity:null, repairDate:'3/7/2026',  contractor:'Schreiber', notes:'', currentStatus:'REP' },
+
+        // ── R ──────────────────────────────────────────────────────
+        { bayKeys:['R-9'], callInDate:'2/11/2026', severity:'S1', repairDate:null, contractor:null, notes:'', currentStatus:'S1' }
+    ];
+
+    // =================================================================
+    // 3. BUILD THE GRID
+    // =================================================================
+    const grid = document.getElementById('mainGrid');
+    let headerRow = '<tr><th>⬛</th>';
+    customCols.forEach(c => { headerRow += `<th>${c}</th>`; });
+    headerRow += '</tr>';
+    grid.innerHTML = headerRow;
+
+    customRows.forEach(rowLabel => {
+        let rowHTML = `<tr><td class="row-label">${rowLabel}</td>`;
+        customCols.forEach(colLabel => {
+            const bayKey = `${rowLabel}-${colLabel}`;
+            let sel = `<select onchange="onStatusChange(this,'${bayKey}')"
+                               data-bay="Bay: ${rowLabel}-${colLabel}"
+                               data-key="${bayKey}" data-previous="">`;
+            statuses.forEach(s => {
+                sel += s.value === ''
+                    ? `<option value=""> </option>`
+                    : `<option value="${s.value}">${s.label}</option>`;
+            });
+            sel += '</select>';
+            rowHTML += `<td class="status-"
+                           data-bay="Bay: ${rowLabel}-${colLabel}"
+                           data-key="${bayKey}"
+                           ondblclick="openHistoryModal('${bayKey}')">${sel}</td>`;
+        });
+        rowHTML += '</tr>';
+        grid.innerHTML += rowHTML;
+    });
+
+    // =================================================================
+    // 4. BUILD SUMMARY TABLE
+    // =================================================================
+    const summaryBody = document.getElementById('summaryBody');
+
+    function addDivider(label) {
+        summaryBody.innerHTML += `<tr class="summary-divider"><td colspan="3">${label}</td></tr>`;
+    }
+    function addSummaryRow(val) {
+        const s = getStatusInfo(val);
+        summaryBody.innerHTML += `
+            <tr>
+                <td class="code-cell status-${s.cssClass}">${s.label}</td>
+                <td class="desc-cell">${s.description}<span class="desc-sub">${s.sub}</span></td>
+                <td class="count-cell" id="count-${s.cssClass}">0</td>
+            </tr>`;
+    }
+
+    addDivider('📊 Severity Levels — Lowest to Critical');
+    ['S1','S2','S3','S4','S5'].forEach(addSummaryRow);
+    addDivider('🔧 Active & Drain Statuses');
+    ['ACT','DRN','L+D','R+D','A+D'].forEach(addSummaryRow);
+    addDivider('✅ Resolved');
+    ['REP'].forEach(addSummaryRow);
+
+    // =================================================================
+    // 5. STATUS CHANGE ENGINE
+    // =================================================================
+    let pendingBayKey         = null;
+    let pendingNewStatus      = null;
+    let pendingPreviousStatus = null;
+    let pendingPhotoBase64    = null;
+
+    function onStatusChange(dropdown, bayKey) {
+        if (dropdown.value === '') {
+            dropdown.parentElement.className = 'status-';
+            dropdown.setAttribute('data-previous','');
+            recalculateTotals();
+            return;
+        }
+        pendingBayKey         = bayKey;
+        pendingNewStatus      = dropdown.value;
+        pendingPreviousStatus = dropdown.getAttribute('data-previous') || '';
+        openCommentModal(bayKey, pendingNewStatus);
+    }
+
+    function openCommentModal(bayKey, statusValue) {
+        const s = getStatusInfo(statusValue);
+        document.getElementById('commentModalTitle').innerText = `📍 Bay: ${bayKey}`;
+        document.getElementById('modalStatusCode').innerText   = s.label;
+        document.getElementById('modalStatusDesc').innerText   = s.description;
+        document.getElementById('modalStatusSub').innerText    = s.sub;
+        document.getElementById('commentInput').value          = '';
+        document.getElementById('commentInput').classList.remove('error');
+        document.getElementById('commentError').classList.remove('visible');
+        removePhoto();
+        renderHistoryIntoElement('commentModalHistory', bayKey);
+        document.getElementById('commentModal').classList.add('active');
+        setTimeout(() => document.getElementById('commentInput').focus(), 120);
+    }
+
+    function confirmStatusChange() {
+        const text = document.getElementById('commentInput').value.trim();
+        if (!text) {
+            document.getElementById('commentInput').classList.add('error');
+            document.getElementById('commentError').classList.add('visible');
+            document.getElementById('commentInput').focus();
+            return;
+        }
+        const s        = getStatusInfo(pendingNewStatus);
+        const dropdown = document.querySelector(`select[data-key="${pendingBayKey}"]`);
+        dropdown.parentElement.className = `status-${s.cssClass}`;
+        dropdown.setAttribute('data-previous', pendingNewStatus);
+        addHistoryEntry(pendingBayKey, pendingNewStatus, text, pendingPhotoBase64, false);
+        markCellHasComments(pendingBayKey);
+        recalculateTotals();
+        document.getElementById('commentModal').classList.remove('active');
+        pendingBayKey = pendingNewStatus = pendingPreviousStatus = pendingPhotoBase64 = null;
+    }
+
+    function cancelStatusChange() {
+        const dropdown = document.querySelector(`select[data-key="${pendingBayKey}"]`);
+        if (dropdown) dropdown.value = pendingPreviousStatus || '';
+        document.getElementById('commentModal').classList.remove('active');
+        pendingBayKey = pendingNewStatus = pendingPreviousStatus = pendingPhotoBase64 = null;
+    }
+
+            function recalculateTotals() {
+        const counts = {};
+        // Initialize counts for all statuses
+        statuses.forEach(s => { if (s.value) counts[s.cssClass] = 0; });
+        let grandTotal = 0;
+
+        // Query select values directly (100% reliable in all browsers)
+        const selects = document.querySelectorAll('#mainGrid select');
+        selects.forEach(select => {
+            const val = select.value;
+            if (val) {
+                const s = getStatusInfo(val);
+                if (counts[s.cssClass] !== undefined) {
+                    counts[s.cssClass]++;
+                    grandTotal++;
+                }
+            }
+        });
+
+        // Update UI counts
+        statuses.forEach(s => {
+            const el = document.getElementById(`count-${s.cssClass}`);
+            if (el) el.innerText = counts[s.cssClass];
+        });
+        document.getElementById('grandTotal').innerText = grandTotal;
+    }
+
+
+
+    // =================================================================
+    // 6. PHOTO ENGINE
+    // =================================================================
+    function triggerPhotoInput() { document.getElementById('photoInput').click(); }
+
+    function handlePhotoSelected(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_W  = 900;
+                const scale  = img.width > MAX_W ? MAX_W / img.width : 1;
+                canvas.width  = img.width  * scale;
+                canvas.height = img.height * scale;
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                pendingPhotoBase64 = canvas.toDataURL('image/jpeg', 0.72);
+                document.getElementById('photoPreview').src               = pendingPhotoBase64;
+                document.getElementById('photoPreviewWrap').style.display = 'block';
+                document.getElementById('removePhotoBtn').style.display   = 'inline-flex';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function removePhoto() {
+        pendingPhotoBase64 = null;
+        document.getElementById('photoInput').value               = '';
+        document.getElementById('photoPreview').src               = '';
+        document.getElementById('photoPreviewWrap').style.display = 'none';
+        document.getElementById('removePhotoBtn').style.display   = 'none';
+    }
+
+    // =================================================================
+    // 7. TOOLTIP
+    // =================================================================
+    const tooltip = document.getElementById('customTooltip');
+    grid.addEventListener('mouseover', e => {
+    const td = e.target.closest('td[data-key]');
+    if (!td) { tooltip.style.display = 'none'; return; }
+
+    const bayKey = td.getAttribute('data-key');
+    const select = td.querySelector('select');
+    const currentStatus = select ? select.value : '';
+    const history = getHistory(bayKey);
+    const s = getStatusInfo(currentStatus);
+
+    let html = `<strong>📍 Bay ${bayKey}</strong><br>`;
+
+    if (currentStatus) {
+        html += `<strong>Status:</strong> ${s.label}`;
+        if (s.description) html += ` — ${s.description}`;
+        html += '<br>';
+    } else {
+        html += `<span style="color:#aaa;font-style:italic;">No status assigned.</span><br>`;
+    }
+
+    if (history.length > 0) {
+        const last = history[history.length - 1];
+        html += `<strong>Latest Note:</strong> ${last.comment}<br>`;
+        html += `<small style="color:#aaa;font-style:italic;">🕐 ${last.timestamp}</small>`;
+    } else {
+        html += `<small style="color:#aaa;font-style:italic;">No notes logged yet.</small>`;
+    }
+
+    tooltip.innerHTML = html;
+    tooltip.style.display = 'block';
+});
+
+      grid.addEventListener('mousemove', e => {
+        if (tooltip.style.display === 'block') {
+            tooltip.style.left = (e.pageX + 14) + 'px';
+            tooltip.style.top  = (e.pageY - tooltip.offsetHeight - 10) + 'px';
+        }
+    });
+
+    grid.addEventListener('mouseout', () => { tooltip.style.display = 'none'; });
+
+    // =================================================================
+    // 8. HISTORY MODAL (Double Click)
+    // =================================================================
+    // Track which bay is open in the history modal
+    let activeHistoryBayKey = null;
+    let pendingUpdatePhoto  = null;
+
+    function openHistoryModal(bayKey) {
+        activeHistoryBayKey = bayKey;
+        document.getElementById('historyModalTitle').innerText = `📍 Bay: ${bayKey} — Full History`;
+        renderHistoryIntoElement('historyLog', bayKey);
+
+        // Reset the update form
+        document.getElementById('updateCommentInput').value = '';
+        document.getElementById('updateCommentInput').classList.remove('error');
+        document.getElementById('updateCommentError').classList.remove('visible');
+        removeUpdatePhoto();
+
+        document.getElementById('historyModal').classList.add('active');
+    }
+
+    function closeHistoryModal() {
+        document.getElementById('historyModal').classList.remove('active');
+        activeHistoryBayKey = null;
+        pendingUpdatePhoto  = null;
+    }
+
+    // Photo handlers for the update form
+    function triggerUpdatePhotoInput() {
+        document.getElementById('updatePhotoInput').click();
+    }
+
+    function handleUpdatePhotoSelected(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_W  = 900;
+                const scale  = img.width > MAX_W ? MAX_W / img.width : 1;
+                canvas.width  = img.width  * scale;
+                canvas.height = img.height * scale;
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                pendingUpdatePhoto = canvas.toDataURL('image/jpeg', 0.72);
+                document.getElementById('updatePhotoPreview').src               = pendingUpdatePhoto;
+                document.getElementById('updatePhotoPreviewWrap').style.display = 'block';
+                document.getElementById('removeUpdatePhotoBtn').style.display   = 'inline-flex';
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function removeUpdatePhoto() {
+        pendingUpdatePhoto = null;
+        document.getElementById('updatePhotoInput').value                   = '';
+        document.getElementById('updatePhotoPreview').src                   = '';
+        document.getElementById('updatePhotoPreviewWrap').style.display     = 'none';
+        document.getElementById('removeUpdatePhotoBtn').style.display       = 'none';
+    }
+
+    // Save the new update entry
+    function saveUpdateEntry() {
+        const text = document.getElementById('updateCommentInput').value.trim();
+        if (!text) {
+            document.getElementById('updateCommentInput').classList.add('error');
+            document.getElementById('updateCommentError').classList.add('visible');
+            document.getElementById('updateCommentInput').focus();
+            return;
+        }
+
+        // Get the current status of the bay
+        const dropdown    = document.querySelector(`select[data-key="${activeHistoryBayKey}"]`);
+        const currentStatus = dropdown ? dropdown.value : '';
+
+        // Save the new entry with the same status
+        addHistoryEntry(activeHistoryBayKey, currentStatus, text, pendingUpdatePhoto, false);
+        markCellHasComments(activeHistoryBayKey);
+
+        // Refresh the history log in the modal
+        renderHistoryIntoElement('historyLog', activeHistoryBayKey);
+
+        // Reset the form
+        document.getElementById('updateCommentInput').value = '';
+        document.getElementById('updateCommentInput').classList.remove('error');
+        document.getElementById('updateCommentError').classList.remove('visible');
+        removeUpdatePhoto();
+
+        // Show a quick confirmation
+        document.getElementById('updateCommentInput').placeholder =
+            '✅ Update saved! Add another note if needed...';
+        setTimeout(() => {
+            document.getElementById('updateCommentInput').placeholder =
+                'Add new observations, actions taken, or updated condition notes...';
+        }, 3000);
+    }
+
+    document.getElementById('historyModal').addEventListener('click', function(e) {
+        if (e.target === this) closeHistoryModal();
+    });
+
+    // =================================================================
+    // 9. HISTORY RENDERER
+    // =================================================================
+    function renderHistoryIntoElement(elementId, bayKey) {
+        const container = document.getElementById(elementId);
+        const history   = getHistory(bayKey);
+
+        if (history.length === 0) {
+            container.innerHTML = `<div class="no-history">No history yet for this bay.<br>Select a status and add a comment to begin logging.</div>`;
+            return;
+        }
+
+        container.innerHTML = [...history].reverse().map(entry => {
+            const s         = getStatusInfo(entry.status);
+            const importTag = entry.imported
+                ? '<span class="he-imported-tag">📁 Imported from tracking log</span><br>' : '';
+            const photoHTML = entry.photo
+                ? `<div class="history-photo-wrap">
+                       <div class="history-photo-label">📷 Attached Photo</div>
+                       <img class="history-photo-thumb" src="${entry.photo}" alt="Attached photo" title="Click to view full size">
+                   </div>` : '';
+            return `
+                <div class="history-entry ${entry.imported ? 'imported' : ''}">
+                    <div class="he-timestamp">🕐 ${entry.timestamp}</div>
+                    ${importTag}
+                    <div class="he-status">🔄 ${s.label}</div>
+                    <div class="he-desc">${s.description}</div>
+                    <div class="he-sub">${s.sub}</div>
+                    <div class="he-clabel">💬 Details</div>
+                    <div class="he-comment">${entry.comment}</div>
+                    ${photoHTML}
+                </div>`;
+        }).join('');
+    }
+
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('history-photo-thumb')) viewImage(e.target.src);
+    });
+
+    // =================================================================
+    // 10. IMAGE VIEWER
+    // =================================================================
+    function viewImage(src) {
+        document.getElementById('viewerImg').src = src;
+        document.getElementById('imageViewer').classList.add('active');
+    }
+    function closeImageViewer() {
+        document.getElementById('imageViewer').classList.remove('active');
+    }
+    document.getElementById('closeViewerBtn').addEventListener('click', closeImageViewer);
+    document.getElementById('viewerImg').addEventListener('click', closeImageViewer);
+
+    // =================================================================
+    // 11. LOCAL STORAGE ENGINE
+    // =================================================================
+    function getHistory(bayKey) {
+        const stored = localStorage.getItem(`roofgrid_${bayKey}`);
+        return stored ? JSON.parse(stored) : [];
+    }
+
+    function addHistoryEntry(bayKey, status, comment, photo, imported) {
+        const history = getHistory(bayKey);
+        const now     = new Date();
+        const timestamp = now.toLocaleDateString('en-US', {
+            year:'numeric', month:'short', day:'numeric',
+            hour:'2-digit', minute:'2-digit', second:'2-digit'
+        });
+        history.push({ timestamp, status, comment, photo: photo || null, imported: !!imported });
+        localStorage.setItem(`roofgrid_${bayKey}`, JSON.stringify(history));
+    }
+
+    function markCellHasComments(bayKey) {
+        document.querySelectorAll(`td[data-key="${bayKey}"]`)
+                .forEach(c => c.classList.add('has-comments'));
+    }
+
+    // =================================================================
+    // 12. IMPORT DATE FORMATTER
+    // =================================================================
+    function formatImportDate(dateStr, hour) {
+        if (!dateStr) return '';
+        const p = dateStr.split('/');
+        if (p.length !== 3) return dateStr;
+        const h = (hour !== undefined) ? hour : 8;
+        const d = new Date(parseInt(p[2]), parseInt(p[0]) - 1, parseInt(p[1]), h, 0, 0);
+        return d.toLocaleDateString('en-US', {
+            year:'numeric', month:'short', day:'numeric',
+            hour:'2-digit', minute:'2-digit', second:'2-digit'
+        });
+    }
+
+    // =================================================================
+    // 13. LEGACY DATA IMPORT
+    //     Runs once on first load. Populates localStorage with all
+    //     historical records from the preloadData array.
+    // =================================================================
+    const IMPORT_FLAG = 'roofgrid_legacy_v1';
+
+    function importLegacyData() {
+        if (localStorage.getItem(IMPORT_FLAG)) return 0;
+
+        const processedBays = new Set();
+
+        preloadData.forEach(entry => {
+            entry.bayKeys.forEach(bayKey => {
+                const history = getHistory(bayKey);
+
+                // ── Build call-in comment ──────────────────────────
+                const lines = [];
+                lines.push(`📅 Called In: ${entry.callInDate}`);
+                if (entry.severity) {
+                    const sInfo = getStatusInfo(entry.severity);
+                    lines.push(`⚠️ Severity: ${entry.severity} — ${sInfo.description}`);
+                }
+                if (entry.contractor && !entry.repairDate) {
+                    lines.push(`🔧 Assigned Contractor: ${entry.contractor}`);
+                }
+                const skipNotes = !entry.notes || entry.notes === '';
+                if (!skipNotes) lines.push(`📝 ${entry.notes}`);
+                if (!entry.repairDate && skipNotes && !entry.severity) {
+                    lines.push('📝 Leak reported. Pending assessment.');
+                }
+
+                const callInStatus = entry.severity
+                    || (entry.currentStatus === 'REP' ? 'ACT' : entry.currentStatus);
+
+                history.push({
+                    timestamp: formatImportDate(entry.callInDate, 8),
+                    status:    callInStatus,
+                    comment:   lines.join('\n'),
+                    photo:     null,
+                    imported:  true
+                });
+
+                // ── Build repair comment (if applicable) ───────────
+                if (entry.repairDate && entry.currentStatus === 'REP') {
+                    const rLines = [];
+                    rLines.push(`✅ Repair Completed: ${entry.repairDate}`);
+                    if (entry.contractor) rLines.push(`🔧 Contractor: ${entry.contractor}`);
+                    rLines.push('Bay closed out. Monitor at next scheduled inspection to confirm closure.');
+
+                    history.push({
+                        timestamp: formatImportDate(entry.repairDate, 17),
+                        status:    'REP',
+                        comment:   rLines.join('\n'),
+                        photo:     null,
+                        imported:  true
+                    });
+                }
+
+                localStorage.setItem(`roofgrid_${bayKey}`, JSON.stringify(history));
+                processedBays.add(bayKey);
+            });
+        });
+
+        localStorage.setItem(IMPORT_FLAG, 'true');
+        return processedBays.size;
+    }
+
+    // =================================================================
+    // 14. RESTORE ALL STATUSES FROM LOCAL STORAGE
+    //     Reads the last history entry for every bay and applies
+    //     the correct colour and dropdown value. Runs on every load.
+    // =================================================================
+    function restoreAllStatuses() {
+        customRows.forEach(r => {
+            customCols.forEach(c => {
+                const bayKey = `${r}-${c}`;
+                const history = getHistory(bayKey);
+                if (history.length === 0) return;
+
+                const lastStatus = history[history.length - 1].status;
+                const s          = getStatusInfo(lastStatus);
+                if (!s.value) return;
+
+                const dropdown = document.querySelector(`select[data-key="${bayKey}"]`);
+                if (!dropdown) return;
+                dropdown.value = lastStatus;
+                dropdown.setAttribute('data-previous', lastStatus);
+                dropdown.parentElement.className = `status-${s.cssClass}`;
+            });
+        });
+    }
+
+    // =================================================================
+    // 15. RESTORE COMMENT INDICATORS
+    // =================================================================
+    function restoreCommentIndicators() {
+        customRows.forEach(r => customCols.forEach(c => {
+            const key = `${r}-${c}`;
+            if (getHistory(key).length > 0) markCellHasComments(key);
+        }));
+    }
+
+    // =================================================================
+    // 16. IMPORT TOAST NOTIFICATION
+    // =================================================================
+    function showImportToast(uniqueBayCount) {
+        const toast = document.getElementById('importToast');
+        document.getElementById('importToastMsg').innerText =
+            `${uniqueBayCount} bay locations loaded from the existing tracking log. All statuses, history, and notes are ready.`;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 6000);
+    }
+
+// =================================================================
+// 17A. PRINT VIEW BUILDER
+// =================================================================
+function openPrintView() {
+    // Remove portrait override if report was printed before this
+    const po = document.getElementById('portraitOverride');
+    if (po) po.remove();
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', {
+        year:'numeric', month:'long', day:'numeric',
+        hour:'2-digit', minute:'2-digit'
+    });
+
+     // Always rebuild printView so it works after printReport() too
+    document.getElementById('printView').innerHTML = `
+        <div class="print-header">
+            <div>
+                <div class="print-title">🏗️ Roof Condition Grid — Main Building</div>
+                <div class="print-subtitle">Bay Status Tracker — 50 ft × 50 ft Sections</div>
+            </div>
+            <div class="print-meta">Printed: ${dateStr}<br>Ford Motor Company — Facility Maintenance</div>
+        </div>
+        <div class="print-legend">
+            <div class="print-legend-title">🎨 Status Color Legend</div>
+            <span class="print-pill print-cell-S1">S1 — Aisles</span>
+            <span class="print-pill print-cell-S2">S2 — Walkways</span>
+            <span class="print-pill print-cell-S3">S3 — Equipment</span>
+            <span class="print-pill print-cell-S4">S4 — Control Panels</span>
+            <span class="print-pill print-cell-S5">S5 — Electrical Hazard</span>
+            <span class="print-pill print-cell-ACT">ACT — Active Leak</span>
+            <span class="print-pill print-cell-DRN">DRN — Repaired Drain</span>
+            <span class="print-pill print-cell-LD">L+D — Leak + Drain</span>
+            <span class="print-pill print-cell-RD">R+D — Repair + Drain</span>
+            <span class="print-pill print-cell-AD">A+D — Temp + Drain</span>
+            <span class="print-pill print-cell-REP">REP — Repaired</span>
+            <span class="print-pill print-cell-" style="border:1px solid #ccc;">— Empty Bay</span>
+        </div>
+        <div class="print-grid-wrap">
+            <table class="print-grid" id="printGrid"></table>
+        </div>
+        <div class="print-summary">
+            <div class="print-summary-title">📊 Status Summary</div>
+            <table class="print-summary-table">
+                <thead><tr>
+                    <th style="width:50px;">Code</th>
+                    <th>Description</th>
+                    <th style="width:60px;">Count</th>
+                </tr></thead>
+                <tbody id="printSummaryBody"></tbody>
+                <tfoot><tr class="print-grand-row">
+                    <td colspan="2" style="padding-left:10px;">GRAND TOTAL</td>
+                    <td class="print-grand-count" id="printGrandTotal">0</td>
+                </tr></tfoot>
+            </table>
+        </div>
+        <div class="print-footer">
+            <span>Ford Motor Company — Facility Maintenance — Roof Condition Tracker</span>
+            <span>${dateStr}</span>
+        </div>`;
+
+       // Build print grid
+    const printGrid = document.getElementById('printGrid');
+
+    // 🌟 Detect if REP bays are currently hidden on screen
+    const isRepHidden = document.getElementById('mainGrid').classList.contains('hide-rep');
+
+    let html = '<tr><th style="width:22px;min-width:22px;">⬛</th>';
+    customCols.forEach(c => { html += `<th>${c}</th>`; });
+    html += '</tr>';
+
+
+    customRows.forEach(rowLabel => {
+        html += `<tr><td class="print-row-label">${rowLabel}</td>`;
+        customCols.forEach(colLabel => {
+            const bayKey  = `${rowLabel}-${colLabel}`;
+            const dropdown = document.querySelector(`select[data-key="${bayKey}"]`);
+            // 🌟 If REP is hidden on screen, print those bays as blank
+            let val = dropdown ? dropdown.value : '';
+            if (isRepHidden && val === 'REP') val = '';
+            const s       = getStatusInfo(val);
+            html += `<td class="print-cell-${s.cssClass}">${s.label || ''}</td>`;
+        });
+        html += '</tr>';
+    });
+    printGrid.innerHTML = html;
+    // Build print summary
+    const printSummaryBody = document.getElementById('printSummaryBody');
+    let summaryHTML = '';
+    let grandTotal  = 0;
+
+    const sections = [
+        { label:'📊 Severity Levels — Lowest to Critical', vals:['S1','S2','S3','S4','S5'] },
+        { label:'🔧 Active & Drain Statuses',              vals:['ACT','DRN','L+D','R+D','A+D'] },
+        { label:'✅ Resolved',                             vals:['REP'] }
+    ];
+
+    sections.forEach(section => {
+        summaryHTML += `<tr><td colspan="3"
+            style="background:#2d4a6e;color:#c8d8f0;font-size:9px;font-weight:700;
+                   padding:4px 8px;text-transform:uppercase;letter-spacing:1px;">
+            ${section.label}</td></tr>`;
+        section.vals.forEach(val => {
+            const s       = getStatusInfo(val);
+            const countEl = document.getElementById(`count-${s.cssClass}`);
+            const count   = countEl ? (parseInt(countEl.innerText) || 0) : 0;
+            grandTotal   += count;
+            summaryHTML  += `<tr>
+                <td style="text-align:center;font-weight:800;font-size:9px;"
+                    class="print-cell-${s.cssClass}">${s.label}</td>
+                <td style="font-size:9px;font-weight:600;padding:4px 8px;">${s.description}</td>
+                <td class="print-summary-count">${count}</td>
+            </tr>`;
+        });
+    });
+
+    printSummaryBody.innerHTML = summaryHTML;
+    document.getElementById('printGrandTotal').innerText = grandTotal;
+
+    // Trigger the browser print dialog
+    window.print();
+}
+
+    // =================================================================
+// 16. REPORT ENGINE
+// =================================================================
+
+const severityOrder = ['S5','S4','S3','S2','S1','ACT','DRN','L+D','R+D','A+D','REP'];
+
+function getSeverityIcon(val) {
+    const icons = {
+        S5:'⚡', S4:'🔴', S3:'🟠', S2:'🟡', S1:'🔵',
+        ACT:'💧', DRN:'🔧', 'L+D':'⚠️', 'R+D':'🔨', 'A+D':'🛡️', REP:'✅'
+    };
+    return icons[val] || '❓';
+}
+
+function openReportBuilder() {
+    const filterGrid = document.getElementById('reportStatusFilter');
+    filterGrid.innerHTML = '';
+
+    statuses.filter(s => s.value !== '').forEach(s => {
+        const chip = document.createElement('label');
+        chip.className = `report-filter-chip selected status-${s.cssClass}`;
+        chip.innerHTML = `<input type="checkbox" value="${s.value}" checked> ${s.label}`;
+        chip.querySelector('input').addEventListener('change', function() {
+            chip.classList.toggle('selected', this.checked);
+        });
+        filterGrid.appendChild(chip);
+    });
+
+    document.getElementById('reportBuilderModal').classList.add('active');
+}
+
+function closeReportBuilder() {
+    document.getElementById('reportBuilderModal').classList.remove('active');
+}
+
+function closeReportView() {
+    document.getElementById('reportViewModal').classList.remove('active');
+}
+
+function generateReport() {
+    const selectedStatuses = [...document.querySelectorAll('#reportStatusFilter input:checked')]
+        .map(cb => cb.value);
+
+    if (selectedStatuses.length === 0) {
+        alert('⚠️ Please select at least one status to include in the report.');
+        return;
+    }
+
+    const historyDepth = document.querySelector('input[name="historyDepth"]:checked').value;
+    const showPhotos   = document.getElementById('reportShowPhotos').checked;
+
+    // Collect bays that match the filter and have history
+    const reportBays = [];
+    customRows.forEach(rowLabel => {
+        customCols.forEach(colLabel => {
+            const bayKey   = `${rowLabel}-${colLabel}`;
+            const history  = getHistory(bayKey);
+            if (history.length === 0) return;
+            const dropdown = document.querySelector(`select[data-key="${bayKey}"]`);
+            const currentVal = dropdown ? dropdown.value : '';
+            if (!selectedStatuses.includes(currentVal)) return;
+            reportBays.push({ bayKey, currentVal, history });
+        });
+    });
+
+    // Sort by severity order
+    reportBays.sort((a, b) => {
+        const ai = severityOrder.indexOf(a.currentVal);
+        const bi = severityOrder.indexOf(b.currentVal);
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
+
+    buildReportView(reportBays, historyDepth, showPhotos);
+    closeReportBuilder();
+    document.getElementById('reportViewModal').classList.add('active');
+}
+
+function buildReportView(reportBays, historyDepth, showPhotos) {
+    const body = document.getElementById('reportViewBody');
+    const now  = new Date().toLocaleDateString('en-US', {
+        year:'numeric', month:'long', day:'numeric',
+        hour:'2-digit', minute:'2-digit'
+    });
+
+    document.getElementById('reportViewSubtitle').innerText =
+        `Generated: ${now}  —  ${reportBays.length} bay(s) matched  —  ` +
+        (historyDepth === 'latest' ? 'Most recent entry only' : 'Full history');
+
+    if (reportBays.length === 0) {
+        body.innerHTML = `<div class="report-no-results">
+            No bays found matching your filter.<br>
+            Try selecting more statuses or check that bays have been logged.
+        </div>`;
+        return;
+    }
+
+    let html    = '';
+    let lastSev = null;
+
+    reportBays.forEach(({ bayKey, currentVal, history }) => {
+        const s = getStatusInfo(currentVal);
+
+        // Section divider when severity group changes
+        if (currentVal !== lastSev) {
+            const groupCount = reportBays.filter(b => b.currentVal === currentVal).length;
+            html += `
+                <div class="report-section-divider">
+                    ${getSeverityIcon(currentVal)}&nbsp;${s.description || s.label}
+                    <span style="margin-left:auto;opacity:0.72;font-size:10px;font-weight:600;">
+                        ${groupCount} bay(s)
+                    </span>
+                </div>`;
+            lastSev = currentVal;
+        }
+
+        // Entries to show
+        const entries = historyDepth === 'latest'
+            ? [history[history.length - 1]]
+            : [...history].reverse();
+
+        const entriesHTML = entries.map(entry => {
+            const eStatus   = getStatusInfo(entry.status);
+            const photoHTML = (showPhotos && entry.photo)
+                ? `<img class="report-entry-photo" src="${entry.photo}"
+                        alt="Attached photo" title="Click to view full size"
+                        onclick="viewImage(this.src)">` : '';
+            const importTag = entry.imported
+                ? `<span style="font-size:10px;background:#eceff1;color:#546e7a;
+                          border-radius:8px;padding:1px 8px;font-weight:600;">
+                       📁 Imported
+                   </span>` : '';
+            return `
+                <div class="report-entry ${entry.imported ? 'imported' : ''}">
+                    <div class="report-entry-timestamp">
+                        🕐 ${entry.timestamp} ${importTag}
+                    </div>
+                    <div class="report-entry-status">🔄 ${eStatus.label} — ${eStatus.description}</div>
+                    <div class="report-entry-comment">${entry.comment}</div>
+                    ${photoHTML}
+                </div>`;
+        }).join('');
+
+        html += `
+            <div class="report-bay-card">
+                <div class="report-bay-header">
+                    <div class="report-bay-id">📍 Bay: ${bayKey}</div>
+                    <span class="report-bay-status-badge status-${s.cssClass}">${s.label}</span>
+                    <span style="margin-left:auto;font-size:11px;color:#999;">
+                        ${history.length} log entr${history.length === 1 ? 'y' : 'ies'}
+                    </span>
+                </div>
+                <div class="report-bay-body">${entriesHTML}</div>
+            </div>`;
+    });
+
+    body.innerHTML = html;
+}
+
+function printReport() {
+    const reportBody = document.getElementById('reportViewBody').innerHTML;
+    const subtitle   = document.getElementById('reportViewSubtitle').innerText;
+    const now        = new Date().toLocaleDateString('en-US', {
+        year:'numeric', month:'long', day:'numeric',
+        hour:'2-digit', minute:'2-digit'
+    });
+
+    document.getElementById('printView').innerHTML = `
+        <div class="print-header">
+            <div>
+                <div class="print-title">📋 Detailed Bay Report — Main Building</div>
+                <div class="print-subtitle">${subtitle}</div>
+            </div>
+            <div class="print-meta">Ford Motor Company — Facility Maintenance<br>${now}</div>
+        </div>
+        <div id="reportPrintBody">${reportBody}</div>
+        <div class="print-footer">
+            <span>Ford Motor Company — Facility Maintenance — Confidential</span>
+            <span>${now}</span>
+        </div>`;
+
+    // ── Inject portrait override ───────────────────────────────────
+    const portraitStyle = document.createElement('style');
+    portraitStyle.id    = 'portraitOverride';
+    portraitStyle.innerHTML = '@page { size: portrait; margin: 0.5in 0.4in; }';
+    document.head.appendChild(portraitStyle);
+
+    window.print();
+
+    // ── Remove override after print dialog closes ──────────────────
+    setTimeout(() => {
+        const el = document.getElementById('portraitOverride');
+        if (el) el.remove();
+    }, 1500);
+}
+
+// 17. STARTUP SEQUENCE
+    // =================================================================
+    const imported = importLegacyData();   // Only fires on first load
+    restoreAllStatuses();                   // Always restores colours
+    restoreCommentIndicators();             // Always restores 💬 dots
+    recalculateTotals();                    // Always updates counts
+    if (imported > 0) showImportToast(imported);
+
+    // Cosmetic — start grid scrolled to the bottom row
+    setTimeout(() => {
+        const gs = document.querySelector('.grid-scroll');
+        if (gs) gs.scrollTop = gs.scrollHeight;
+    }, 100);
+// SUMMARY PANEL TOGGLE
+function toggleSummary() {
+    const panel = document.querySelector('.summary-panel');
+    const btn   = document.getElementById('toggleSummaryBtn');
+    const isCollapsed = panel.classList.toggle('collapsed');
+    btn.innerText = isCollapsed ? '▶' : '◀';
+    btn.title = isCollapsed ? 'Expand Summary' : 'Collapse Summary';
+}
+
+// =================================================================
+// SELF-SAVING EXPORT ENGINE
+// =================================================================
+function exportUpdatedHTML() {
+    // 1. Gather all current statuses and persistent history from localStorage
+    const updatedData = [];
+    const selects = document.querySelectorAll('#mainGrid select');
+    
+    selects.forEach(select => {
+        const bayKey = select.getAttribute('data-key');
+        const currentStatus = select.value;
+        
+        if (currentStatus !== '') {
+            // Read directly from the persistent localStorage engine
+            const historyLog = getHistory(bayKey);
+
+            updatedData.push({
+                bayKeys: [bayKey],
+                currentStatus: currentStatus,
+                history: historyLog,
+                callInDate: historyLog.length > 0 ? historyLog[0].timestamp.split(',')[0] : new Date().toLocaleDateString(),
+                severity: currentStatus.startsWith('S') ? currentStatus : null,
+                repairDate: currentStatus === 'REP' ? new Date().toLocaleDateString() : null,
+                contractor: null,
+                notes: historyLog.length > 0 ? historyLog[historyLog.length - 1].comment : ''
+            });
+        }
+    });
+
+    // 2. Get the raw HTML of the current document
+    let htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+
+    // 3. Locate the 'preloadData' array in the source code
+    const dataRegex = /const preloadData\s*=\s*\[[\s\S]*?\];/;
+    const updatedDataString = `const preloadData = ${JSON.stringify(updatedData, null, 4)};`;
+
+    if (htmlContent.match(dataRegex)) {
+        htmlContent = htmlContent.replace(dataRegex, updatedDataString);
+    } else {
+        alert("Error: Could not locate the 'preloadData' array to save changes.");
+        return;
+    }
+
+    // 4. Clean up active visual states, hidden elements, and open modals so the export loads clean
+    htmlContent = htmlContent.replace(/class="modal-overlay active"/g, 'class="modal-overlay"');
+    htmlContent = htmlContent.replace(/class="import-toast" style="display:\s*block;"/g, 'class="import-toast"');
+    htmlContent = htmlContent.replace(/class="print-grid-wrap"/g, 'class="print-grid-wrap"');
+    
+    // Ensure the grid doesn't export in a permanently "hidden" state
+    htmlContent = htmlContent.replace(/id="mainGrid" class="hide-rep"/g, 'id="mainGrid"');
+
+    // 5. Generate the download file
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0,10);
+    link.download = `Roof_Condition_Grid_MB_Updated_${dateStr}.html`;
+    link.href = URL.createObjectURL(blob);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// =================================================================
+// SPREADSHEET IMPORT ENGINE (CSV)
+// =================================================================
+
+// Global object to store history logs for each bay
+if (typeof bayHistory === 'undefined') {
+    var bayHistory = {}; 
+}
+
+function triggerCSVInput() {
+    document.getElementById('csvFileInput').click();
+}
+
+function handleCSVUpload(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        processCSVData(text);
+    };
+    reader.readAsText(file);
+    input.value = ''; // Reset input
+}
+
+// Robust CSV Parser that handles quotes, commas, and line breaks
+function parseCSV(text) {
+    let lines = [];
+    let row = [""];
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+        let c = text[i];
+        let next = text[i+1];
+        if (c === '"') {
+            if (inQuotes && next === '"') {
+                row[row.length - 1] += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (c === ',' && !inQuotes) {
+            row.push('');
+        } else if ((c === '\r' || c === '\n') && !inQuotes) {
+            if (c === '\r' && next === '\n') { i++; }
+            lines.push(row);
+            row = [''];
+        } else {
+            row[row.length - 1] += c;
+        }
+    }
+    if (row.length > 1 || row[0] !== '') {
+        lines.push(row);
+    }
+    return lines;
+}
+
+function processCSVData(csvText) {
+    const lines = parseCSV(csvText);
+    if (lines.length < 2) {
+        alert("The uploaded file appears to be empty.");
+        return;
+    }
+
+    const headers = lines[0].map(h => h.trim().toLowerCase());
+    const bayIdx = headers.findIndex(h => h.includes('area') || h.includes('bay'));
+    const callInIdx = headers.findIndex(h => h.includes('call in') || h.includes('call-in'));
+    const sevIdx = headers.findIndex(h => h.includes('severity'));
+    const repairIdx = headers.findIndex(h => h.includes('repair'));
+    const contractorIdx = headers.findIndex(h => h.includes('contractor') || h.includes('roofing'));
+    const tarpIdx = headers.findIndex(h => h.includes('tarp'));
+    const waterIdx = headers.findIndex(h => h.includes('water'));
+    const notesIdx = headers.findIndex(h => h.includes('jb notes') || h.includes('notes'));
+
+    if (bayIdx === -1) {
+        alert("Error: Could not find the 'AREA(Bay)' or 'Bay' column in your spreadsheet.");
+        return;
+    }
+
+    let importCount = 0;
+
+    for (let i = 1; i < lines.length; i++) {
+        const row = lines[i];
+        if (row.length <= bayIdx || !row[bayIdx].trim()) continue;
+
+        const rawBayKey = row[bayIdx].trim();
+        const callInDate = callInIdx !== -1 ? row[callInIdx].trim() : '';
+        const rawSeverity = sevIdx !== -1 ? row[sevIdx].trim().toUpperCase() : '';
+        const repairDate = repairIdx !== -1 ? row[repairIdx].trim() : '';
+        const contractor = contractorIdx !== -1 ? row[contractorIdx].trim() : '';
+        const tarpHanging = tarpIdx !== -1 ? row[tarpIdx].trim() : '';
+        const waterTested = waterIdx !== -1 ? row[waterIdx].trim() : '';
+        const jbNotes = notesIdx !== -1 ? row[notesIdx].trim() : '';
+
+        // 🌟 FIXED: Respects exact column labels without forcing leading zeros (distinguishes 4 from 04)
+        let bayKey = rawBayKey;
+        const parts = rawBayKey.split('-');
+        if (parts.length === 2) {
+            const rowLabel = parts[0].toUpperCase();
+            const colLabel = parts[1];
+            bayKey = `${rowLabel}-${colLabel}`; // Keeps '4' as '4' and '04' as '04'
+        }
+
+        let currentStatus = repairDate ? 'REP' : (rawSeverity || 'ACT');
+
+        let noteParts = [];
+        if (tarpHanging) noteParts.push(`Tarp Hanging: ${tarpHanging}`);
+        if (waterTested) noteParts.push(`Water Tested: ${waterTested}`);
+        if (contractor) noteParts.push(`Contractor: ${contractor}`);
+        if (jbNotes) noteParts.push(jbNotes);
+        const compiledNotes = noteParts.join(' | ') || 'Imported from tracking spreadsheet.';
+
+        const selectEl = document.querySelector(`#mainGrid select[data-key="${bayKey}"]`);
+        if (selectEl) {
+            selectEl.value = currentStatus;
+            selectEl.setAttribute('data-previous', currentStatus);
+            
+            const td = selectEl.parentElement;
+            const statusInfo = getStatusInfo(currentStatus);
+            td.className = `status-${statusInfo.cssClass}`;
+            td.classList.add('has-comments');
+
+            // 🌟 FIXED: Persistent storage update (saves directly to localStorage)
+            const history = getHistory(bayKey);
+            const timestamp = callInDate || new Date().toLocaleDateString();
+            
+            // Avoid adding exact duplicate entries
+            const isDuplicate = history.some(h => h.timestamp.startsWith(timestamp) && h.status === currentStatus);
+            if (!isDuplicate) {
+                history.push({
+                    timestamp: timestamp + ', 08:00:00 AM',
+                    status: currentStatus,
+                    comment: compiledNotes,
+                    photo: null,
+                    imported: true
+                });
+                localStorage.setItem(`roofgrid_${bayKey}`, JSON.stringify(history));
+            }
+
+            importCount++;
+        }
+    }
+
+    // 🌟 FIXED: Instantly updates the Status Summary counts
+    recalculateTotals();
+
+    const toast = document.getElementById('importToast');
+    const toastMsg = document.getElementById('importToastMsg');
+    if (toast && toastMsg) {
+        toastMsg.innerText = `Successfully populated ${importCount} bays from spreadsheet!`;
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 5000);
+    }
+}
+
+
+// Helper to calculate totals if your function has a different name
+function updateSummaryCounts() {
+    const counts = {};
+    statuses.forEach(s => { if (s.value) counts[s.cssClass] = 0; });
+    
+    let grandTotal = 0;
+    const selects = document.querySelectorAll('#mainGrid select');
+    selects.forEach(sel => {
+        const val = sel.value;
+        if (val) {
+            const s = getStatusInfo(val);
+            if (counts[s.cssClass] !== undefined) {
+                counts[s.cssClass]++;
+                grandTotal++;
+            }
+        }
+    });
+
+    for (const cssClass in counts) {
+        const el = document.getElementById(`count-${cssClass}`);
+        if (el) el.innerText = counts[cssClass];
+    }
+    const grandEl = document.getElementById('grandTotal');
+    if (grandEl) grandEl.innerText = grandTotal;
+}
+
+    </script>
+<!-- =================================================================
+     PRINT VIEW — Hidden on screen, shown only when printing
+     ================================================================= -->
+<div id="printView" style="display:none; padding:0; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
+
+    <!-- Print Header -->
+    <div class="print-header">
+        <div>
+            <div class="print-title">🏗️ Roof Condition Grid — Main Building</div>
+            <div class="print-subtitle">Bay Status Tracker — 50 ft × 50 ft Sections</div>
+        </div>
+        <div class="print-meta" id="printMeta"></div>
+    </div>
+
+    <!-- Legend -->
+    <div class="print-legend">
+        <div class="print-legend-title">🎨 Status Color Legend</div>
+        <span class="print-pill print-cell-S1">S1 — Aisles</span>
+        <span class="print-pill print-cell-S2">S2 — Walkways</span>
+        <span class="print-pill print-cell-S3">S3 — Equipment</span>
+        <span class="print-pill print-cell-S4">S4 — Control Panels</span>
+        <span class="print-pill print-cell-S5">S5 — Electrical Hazard</span>
+        <span class="print-pill print-cell-ACT">ACT — Active Leak</span>
+        <span class="print-pill print-cell-DRN">DRN — Repaired Drain</span>
+        <span class="print-pill print-cell-LD">L+D — Leak + Drain</span>
+        <span class="print-pill print-cell-RD">R+D — Repair + Drain</span>
+        <span class="print-pill print-cell-AD">A+D — Temp + Drain</span>
+        <span class="print-pill print-cell-REP">REP — Repaired</span>
+        <span class="print-pill print-cell-" style="border:1px solid #ccc;">— Empty Bay</span>
+    </div>
+
+    <!-- Grid Table (built by JS) -->
+    <div class="print-grid-wrap">
+        <table class="print-grid" id="printGrid"></table>
+    </div>
+
+    <!-- Summary Table -->
+    <div class="print-summary">
+        <div class="print-summary-title">📊 Status Summary</div>
+        <table class="print-summary-table">
+            <thead>
+                <tr>
+                    <th style="width:50px;">Code</th>
+                    <th>Description</th>
+                    <th style="width:60px;">Count</th>
+                </tr>
+            </thead>
+            <tbody id="printSummaryBody"></tbody>
+            <tfoot>
+                <tr class="print-grand-row">
+                    <td colspan="2" style="padding-left:10px;">GRAND TOTAL</td>
+                    <td class="print-grand-count" id="printGrandTotal">0</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Print Footer -->
+    <div class="print-footer">
+        <span>Ford Motor Company — Facility Maintenance — Roof Condition Tracker</span>
+        <span id="printFooterDate"></span>
+    </div>
+
+</div>
+
+</body>
+</html>
